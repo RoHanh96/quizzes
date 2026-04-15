@@ -1,0 +1,53 @@
+---
+description: Hoàn thành task — verify (lint+build), test khi có; spec + tiến độ feature
+alwaysApply: true
+---
+
+# Giao nhiệm vụ & tài liệu (Definition of Done)
+
+## Trước khi coi bugfix / refactor / feature là **xong**
+
+1. **Chạy kiểm tra tự động** từ thư mục gốc repo — **mọi lần agent kết thúc chỉnh sửa code trong repo `quizzes`**, trước khi trả lời user **bắt buộc** chạy `npm run verify` (lint + build + CSS needle + **Playwright e2e**) và **ghi rõ trong cùng tin nhắn đó** kết quả (ví dụ: `Đã chạy npm run verify: pass` hoặc `fail` + lỗi). Không được im lặng bỏ qua bước này.
+2. **Lệnh bắt buộc hiện tại** (theo `package.json`):
+
+   ```bash
+   npm run verify
+   ```
+
+   Script này chạy `lint` → `build` → **`check:admin-ui-css`** (đọc `.next/static/css`, xác nhận có utility đại diện cho **`/`** (admin home) và **`/quizzes`** — tránh hồi quy Tailwind `content` thiếu path, HTML có class nhưng không có CSS).
+
+3. **Dev server — xóa cache + chạy dev (chủ động, không đợi user nhắc):** sau mỗi lần agent **kết thúc chỉnh sửa** có ảnh hưởng tới Next.js (App Router, component, API route, `tailwind.config`, styles, v.v.) trong repo `quizzes`, **trước khi trả lời user** agent **phải** chuẩn bị dev sạch:
+
+   - Chạy **`npm run dev:fresh`** (`rm -rf .next` rồi `next dev`) — **không** chỉ `npm run dev` nếu vừa có thay đổi bundle/CSS có thể lệch cache.
+   - Xem thư mục terminal của Cursor: nếu đã có `next dev` cho **đúng repo** `quizzes` trên cổng đó, **dừng tiến trình cũ** (hoặc giải phóng port) rồi chạy `dev:fresh` lại để tránh `.next` cũ / lỗi chunk; chạy ở **background** nếu lệnh không thoát.
+   - Ghi trong reply: đã chạy `dev:fresh` (hoặc lý do không chạy được — ví dụ không có quyền tới terminal đang giữ port).
+   - **`npm run verify` chạy `next build`** và dùng chung thư mục `.next` với `next dev`. Nếu vừa **`verify` trong lúc `next dev` đang mở**, sau khi verify xong **phải chạy lại `dev:fresh`** trước khi coi dev ổn định — tránh lỗi chunk (`Cannot find module './NNN.js'`), **500** trên `/_next/static/...` và trang như không có CSS.
+
+4. **Smoke UI admin (bắt buộc khi đụng UI / Tailwind / layout / component trang admin):** sau bước dev ở trên (hoặc song song), xác nhận **`/`** và **`/quizzes`** còn đúng layout:
+
+   - Mở **`http://localhost:PORT/`** (admin) và **`http://localhost:PORT/quizzes`** (PORT xem log terminal; mặc định thường 3000).
+   - Kiểm tra nhanh: có **nền/spacing**, tiêu đề, lưới thẻ, nút/link **màu indigo** — không được trang chỉ HTML thuần không style.
+   - Nếu không mở được browser trong môi trường agent: vẫn **bắt buộc** `npm run verify` (đã gồm `check:admin-ui-css`) và ghi rõ trong tóm tắt.
+   - Lỗi dev kiểu **`Cannot find module './NNN.js'`** (chunk webpack): luôn **`npm run dev:fresh`** — thường do vừa `npm run build` / đổi branch trong khi dev vẫn chạy.
+
+5. **Tailwind `content`:** giữ glob **`./src/**/*.{js,ts,jsx,tsx,mdx}`** trong `tailwind.config.js` — mọi file TS/TSX dưới `src/` có `className` đều được quét; **không** thu hẹp chỉ `app` + `components` rồi quên `modules/`, `lib/`, v.v.
+
+6. **`npm run verify`** gồm **`npm run e2e`** (Playwright, Chromium). Lần đầu trên máy mới: **`npm run e2e:install`**. Nếu môi trường không cài được browser Playwright: ghi rõ trong reply và tạm chạy `lint` + `build` + `check:admin-ui-css` (không coi là verify đầy đủ).
+
+7. Nếu môi trường không chạy được (lỗi mạng, DB local, v.v.): ghi **rõ lý do** và những bước đã thử; không im lặng bỏ qua.
+
+8. Khi thay đổi hành vi có thể hồi quy: ưu tiên **thêm hoặc sửa test** cùng code (khi đã có framework test).
+
+## Feature mới — spec & tiến độ
+
+- **Một feature → một file spec** dưới `docs/specs/`, đặt tên: `NNN-short-slug.md` (số thứ tự tùy chọn + slug ngắn), hoặc bám ID task/issue nếu team đã quy ước.
+- **Bắt đầu feature**: tạo file spec từ mẫu `docs/specs/_template.md` (copy nội dung, đổi tên file).
+- Trong spec giữ:
+  - Mục tiêu, phạm vi, không làm gì (out of scope).
+  - Checklist **task / tiến độ** (đánh dấu khi xong; cập nhật khi phạm vi đổi).
+  - Mục **Verify đã chạy**: ghi ngày + lệnh + kết quả (sau mỗi lần merge ý lớn hoặc trước khi coi feature done).
+
+## Liên kết với rule khác
+
+- Cấu trúc code & refactor: `quiz-code-structure.mdc`; mỗi việc một folder `tasks/task-NNN-slug/` (xem `tasks/README.md`).
+- Kiến trúc sản phẩm: `quiz-product-architecture.mdc`.

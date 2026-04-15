@@ -65,13 +65,21 @@ export default async function QuizzesPage() {
               <p className="text-sm text-gray-500 mb-4">
                 {quiz.crosswordQuestions.length} Câu hỏi
               </p>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-wrap gap-2 justify-between items-center">
                 <Link
                   href={`/quizzes/${quiz.id}`}
                   className="text-indigo-600 hover:text-indigo-800"
                 >
-                  Chơi Quiz
+                  Chơi (đăng nhập)
                 </Link>
+                {quiz.shareLink && (
+                  <Link
+                    href={`/play/${quiz.shareLink}`}
+                    className="text-green-700 hover:text-green-900"
+                  >
+                    /play/…
+                  </Link>
+                )}
                 {session.user.isAdmin && (
                   <Link
                     href={`/quizzes/${quiz.id}/edit`}

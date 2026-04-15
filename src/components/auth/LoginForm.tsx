@@ -1,15 +1,20 @@
 "use client"
 
 import { signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 export default function LoginForm() {
+  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
+    setLoading(true)
     try {
       const result = await signIn("credentials", {
         email,
@@ -18,10 +23,15 @@ export default function LoginForm() {
       })
 
       if (result?.error) {
-        setError("Invalid credentials")
+        setError("Email hoặc mật khẩu không hợp lệ")
+      } else if (result?.ok) {
+        router.push("/")
+        router.refresh()
       }
-    } catch (error) {
-      setError("Something went wrong")
+    } catch {
+      setError("Đã có lỗi xảy ra, thử lại sau")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -70,9 +80,10 @@ export default function LoginForm() {
       <div>
         <button
           type="submit"
-          className="group relative flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+          disabled={loading}
+          className="group relative flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
         >
-          Sign in
+          {loading ? "Đang đăng nhập…" : "Đăng nhập"}
         </button>
       </div>
     </form>

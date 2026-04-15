@@ -1,7 +1,7 @@
-export type QuizType =
-  | "multiple_choice"
-  | "crossword_basic"
-  | "crossword_advanced";
+import type { QuizType } from "@/modules/quiz/types";
+
+export type { QuizType } from "@/modules/quiz/types";
+export { QUIZ_TYPES, isQuizType, isCrosswordType } from "@/modules/quiz/types";
 
 export interface CrosswordQuestion {
   id: string;

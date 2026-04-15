@@ -55,20 +55,33 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     async jwt({ token, user }) {
+      // Credentials: lần đầu `user` có đủ dữ liệu; `token.email` có thể chưa có
+      if (user) {
+        return {
+          ...token,
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          picture: user.image,
+          isAdmin: user.isAdmin,
+        };
+      }
+
+      const email = token.email as string | undefined;
+      if (!email) {
+        return token;
+      }
+
       const dbUser = await prisma.user.findFirst({
-        where: {
-          email: token.email!,
-        },
+        where: { email },
       });
 
       if (!dbUser) {
-        if (user) {
-          token.id = user?.id;
-        }
         return token;
       }
 
       return {
+        ...token,
         id: dbUser.id,
         name: dbUser.name,
         email: dbUser.email,

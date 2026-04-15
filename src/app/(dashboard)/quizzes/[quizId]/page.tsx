@@ -1,49 +1,54 @@
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { prisma } from "@/lib/prisma"
-import CrosswordGame from "@/components/quizzes/CrosswordGame"
-import Link from "next/link"
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import Link from "next/link";
+import CrosswordPlayer from "@/modules/quiz/components/player/CrosswordPlayer";
+import { isCrosswordType } from "@/modules/quiz/types";
 
 export default async function PlayQuizPage({
   params,
 }: {
-  params: { quizId: string }
+  params: { quizId: string };
 }) {
-  const session = await getServerSession(authOptions)
+  const session = await getServerSession(authOptions);
 
   if (!session) {
-    redirect("/login")
+    redirect("/login");
   }
 
   const quiz = await prisma.quiz.findUnique({
     where: { id: params.quizId },
     include: {
       crosswordQuestions: {
-        orderBy: {
-          order: "asc",
-        },
+        orderBy: { order: "asc" },
       },
     },
-  })
+  });
 
   if (!quiz) {
-    redirect("/")
+    redirect("/");
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">{quiz.title}</h1>
-        <Link
-          href="/"
-          className="text-gray-600 hover:text-gray-800"
-        >
-          ← Quay lại
-        </Link>
-      </div>
-
-      <CrosswordGame quiz={quiz} />
+      {isCrosswordType(quiz.type) ? (
+        <CrosswordPlayer
+          quiz={quiz}
+          backHref="/"
+          backLabel="Quay lại danh sách"
+        />
+      ) : (
+        <>
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">{quiz.title}</h1>
+            <Link href="/" className="text-gray-600 hover:text-gray-800">
+              ← Quay lại
+            </Link>
+          </div>
+          <p className="text-gray-600">Multiple choice — đang phát triển.</p>
+        </>
+      )}
     </div>
-  )
-} 
+  );
+}

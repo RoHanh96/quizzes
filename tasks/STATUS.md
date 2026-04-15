@@ -1,0 +1,38 @@
+# Trạng thái tổng hợp — tasks
+
+File này là **cái nhìn tổng quát** (đã làm / đang làm / còn nợ). Chi tiết kỹ thuật vẫn nằm trong từng folder task.
+
+**Cập nhật:** khi đóng mục, đổi trạng thái task, hoặc thêm task mới — sửa bảng dưới và dòng *Cập nhật lần cuối* ở cuối.
+
+---
+
+## Ý nghĩa cột **Trạng thái**
+
+| Giá trị | Ý nghĩa |
+|---------|---------|
+| **Hoàn thành** | Mục tiêu task đã đạt; chỉ còn bảo trì nhỏ nếu có. |
+| **Gần xong** | Phần chính xong; còn vài mục phụ / tech debt ghi rõ trong task. |
+| **Đang làm** | Đang triển khai tích cực. |
+| **Chưa bắt đầu** | Chỉ có spec/plan hoặc chưa có code. |
+| **Tạm dừng** | Không ưu tiên trong giai đoạn hiện tại. |
+
+---
+
+## Bảng task
+
+| ID | Task | Trạng thái | Tóm tắt tiến độ |
+|----|------|------------|-----------------|
+| [001](./task-001-quiz-refactor/) | Quiz refactor (module, API, bỏ Game) | **Gần xong** | Phase 0–5 xong; Phase 6: còn registry đầy đủ & alias `@/modules` tùy chọn. Phase 5: nợ **`getForPlay`** tách payload (ẩn đáp án MC khi public). Chi tiết: [refactor-plan.md](./task-001-quiz-refactor/refactor-plan.md). |
+| [002](./task-002-crossword-basic-spec/) | Crossword basic — spec & triển khai | **Hoàn thành** (MVP code) | Pipeline `normalizeCrosswordQuestions` + gán index; editor/preview/player + `answersMatch`; e2e Playwright tối thiểu + checklist §5.1 trong [spec.md](./task-002-crossword-basic-spec/spec.md); kiểm thử tay A4–A6 còn mở. |
+
+---
+
+## Hàng đợi gợi ý (không phải task số)
+
+Các mục chưa gom vào folder riêng nhưng liên quan trực tiếp bảng trên:
+
+- **Public play + MC:** payload `getForPlay` không lộ đáp án (task 001 / Phase 5).
+
+---
+
+_Cập nhật lần cuối: 2026-04-15 — task 002: thêm e2e + checklist acceptance trong spec._

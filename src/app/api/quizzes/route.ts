@@ -1,7 +1,11 @@
+import type { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { nanoid } from "nanoid";
+import { parseQuizCreateBody } from "@/modules/quiz/validation/quiz-create-body";
+import { normalizeCrosswordQuestions } from "@/modules/quiz/validation/crossword-questions";
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -12,27 +16,48 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { title, type, verticalWord, secretWord, imageUrl, questions } = body;
+    const parsed = parseQuizCreateBody(body);
+    if (!parsed.ok) {
+      return NextResponse.json({ message: parsed.message }, { status: 400 });
+    }
 
-    if (!title || !type) {
-      return new NextResponse("Missing required fields", { status: 400 });
+    const { data } = parsed;
+    const shareLink = nanoid();
+
+    if (data.type === "crossword_basic" || data.type === "crossword_advanced") {
+      const norm = data.normalizedCrosswordQuestions!;
+      const quiz = await prisma.quiz.create({
+        data: {
+          title: data.title,
+          type: data.type,
+          verticalWord: data.verticalWord ?? undefined,
+          secretWord: data.secretWord ?? undefined,
+          imageUrl: data.imageUrl ?? undefined,
+          shareLink,
+          creatorId: session.user.id,
+          crosswordQuestions: {
+            create: norm.map((q) => ({
+              question: q.question,
+              answer: q.answer,
+              order: q.order,
+              position: q.position,
+              letterIndex: q.letterIndex,
+            })),
+          },
+        },
+        include: {
+          crosswordQuestions: true,
+        },
+      });
+      return NextResponse.json(quiz);
     }
 
     const quiz = await prisma.quiz.create({
       data: {
-        title,
-        type,
-        verticalWord,
-        secretWord,
-        imageUrl,
+        title: data.title,
+        type: data.type,
+        shareLink,
         creatorId: session.user.id,
-        crosswordQuestions: {
-          create: questions.map((q: any) => ({
-            question: q.question,
-            answer: q.answer,
-            order: q.order,
-          })),
-        },
       },
       include: {
         crosswordQuestions: true,
@@ -55,33 +80,47 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, title, type, verticalWord, imageUrl, questions } = body;
+    const { id, title, type, verticalWord, secretWord, imageUrl, questions } = body;
 
     if (!id || !title || !type) {
       return new NextResponse("Missing required fields", { status: 400 });
     }
 
-    // Xóa các câu hỏi cũ
     await prisma.crosswordQuestion.deleteMany({
       where: { quizId: id },
     });
 
-    // Cập nhật quiz và tạo câu hỏi mới
+    const updateData: Prisma.QuizUpdateInput = {
+      title,
+      type,
+      verticalWord: verticalWord ?? null,
+      secretWord: secretWord ?? null,
+      imageUrl: imageUrl ?? null,
+    };
+
+    if (type === "crossword_basic" || type === "crossword_advanced") {
+      const norm = normalizeCrosswordQuestions(
+        questions,
+        type,
+        type === "crossword_basic" ? verticalWord : null
+      );
+      if (!norm.ok) {
+        return NextResponse.json({ message: norm.message }, { status: 400 });
+      }
+      updateData.crosswordQuestions = {
+        create: norm.questions.map((q) => ({
+          question: q.question,
+          answer: q.answer,
+          order: q.order,
+          position: q.position,
+          letterIndex: q.letterIndex,
+        })),
+      };
+    }
+
     const quiz = await prisma.quiz.update({
       where: { id },
-      data: {
-        title,
-        type,
-        verticalWord,
-        imageUrl,
-        crosswordQuestions: {
-          create: questions.map((q: any) => ({
-            question: q.question,
-            answer: q.answer,
-            order: q.order,
-          })),
-        },
-      },
+      data: updateData,
       include: {
         crosswordQuestions: true,
       },

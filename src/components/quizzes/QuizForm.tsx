@@ -1,8 +1,13 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
+import { normalizeKeyword } from "@/modules/quiz/lib/text"
+import {
+  validateBasicDraftMessage,
+  getBasicAnswerErrorsByPosition,
+} from "@/modules/quiz/validation/crossword-basic"
 
 interface Question {
   question: string
@@ -31,6 +36,19 @@ export default function QuizForm({ initialData }: QuizFormProps) {
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [previewUrl, setPreviewUrl] = useState(initialData?.imageUrl || "")
+
+  const basicAnswerFieldErrors = useMemo(() => {
+    if (formData.type !== "crossword_basic" || !formData.verticalWord.trim()) {
+      return {} as Record<number, string>
+    }
+    const drafts = formData.questions.map((q: Question, i: number) => ({
+      question: q.question,
+      answer: q.answer,
+      order: i + 1,
+      position: i + 1,
+    }))
+    return getBasicAnswerErrorsByPosition(formData.verticalWord, drafts)
+  }, [formData.type, formData.verticalWord, formData.questions])
 
   const handleAddQuestion = () => {
     setFormData({
@@ -99,6 +117,29 @@ export default function QuizForm({ initialData }: QuizFormProps) {
     setError("")
 
     try {
+      if (formData.type === "crossword_basic") {
+        const drafts = formData.questions.map((q: Question, i: number) => ({
+          question: String(q.question || "").trim(),
+          answer: String(q.answer || "").trim(),
+          order: i + 1,
+          position: i + 1,
+        }))
+        const err = validateBasicDraftMessage(formData.verticalWord, drafts)
+        if (err) {
+          setError(err)
+          setIsSubmitting(false)
+          return
+        }
+        const N = normalizeKeyword(formData.verticalWord).length
+        if (N > 0 && drafts.length !== N) {
+          setError(
+            `Crossword basic: cần đúng ${N} câu hỏi (theo từ khóa đã chuẩn hóa), hiện có ${drafts.length} câu.`
+          )
+          setIsSubmitting(false)
+          return
+        }
+      }
+
       let finalImageUrl = formData.imageUrl
 
       // Nếu có file hình ảnh, upload lên server trước
@@ -120,10 +161,19 @@ export default function QuizForm({ initialData }: QuizFormProps) {
       }
 
       // Chuẩn bị dữ liệu để gửi
-      const quizData = {
+      const quizData: Record<string, unknown> = {
         ...formData,
         imageUrl: finalImageUrl,
         imageFile: undefined, // Không gửi file trong JSON
+      }
+
+      if (formData.type === "crossword_basic") {
+        quizData.questions = formData.questions.map((q: Question, i: number) => ({
+          question: q.question,
+          answer: q.answer,
+          order: i + 1,
+          position: i + 1,
+        }))
       }
 
       // Gửi dữ liệu quiz với URL hình ảnh đã được upload (nếu có)
@@ -203,6 +253,10 @@ export default function QuizForm({ initialData }: QuizFormProps) {
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
               required
             />
+            <p className="mt-1 text-sm text-gray-500">
+              Cần đúng {normalizeKeyword(formData.verticalWord).length || "—"} câu (theo từ khóa đã chuẩn hóa).
+              Mỗi đáp án phải chứa ký tự tương ứng trên từ khóa (câu 1 → ký tự 1, …).
+            </p>
           </div>
 
           <div className="space-y-4">
@@ -253,9 +307,19 @@ export default function QuizForm({ initialData }: QuizFormProps) {
                     type="text"
                     value={question.answer}
                     onChange={(e) => handleQuestionChange(index, "answer", e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    aria-invalid={Boolean(basicAnswerFieldErrors[index + 1])}
+                    className={`mt-1 block w-full rounded-md border shadow-sm focus:border-indigo-500 focus:ring-indigo-500 ${
+                      basicAnswerFieldErrors[index + 1]
+                        ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+                        : "border-gray-300"
+                    }`}
                     required
                   />
+                  {basicAnswerFieldErrors[index + 1] && (
+                    <p className="mt-1 text-sm text-red-600" role="alert">
+                      {basicAnswerFieldErrors[index + 1]}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
