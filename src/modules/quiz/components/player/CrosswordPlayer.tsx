@@ -4,9 +4,23 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { CrosswordQuestion, Quiz as PrismaQuiz } from "@prisma/client";
-import Image from "next/image";
-import { answersMatch, normalizeKeyword } from "@/modules/quiz/lib/text";
-import { alignmentColumnZeroBased } from "@/modules/quiz/validation/crossword-basic";
+import {
+  answersMatch,
+  normalizeKeyword,
+  keywordLettersPreserveSource,
+  answerLettersStripSpaces,
+  answerLetterCountDisplay,
+} from "@/modules/quiz/lib/text";
+import {
+  alignmentColumnZeroBased,
+  visibleLetterIndexZeroBased,
+} from "@/modules/quiz/validation/crossword-basic";
+import {
+  buildAdvancedCellLabels,
+  computeRC,
+  effectiveAdvancedSeed,
+} from "@/modules/quiz/lib/crossword-advanced-grid";
+import CrosswordAdvancedImageGrid from "./CrosswordAdvancedImageGrid";
 
 /** w-8 + gap-1 — đồng bộ với CrosswordPreview */
 const ALIGN_UNIT_REM = 2.25;
@@ -46,6 +60,24 @@ export default function CrosswordPlayer({
     return arr;
   }, [quiz.crosswordQuestions, quiz.type]);
 
+  const advancedLayout = useMemo(() => {
+    if (quiz.type !== "crossword_advanced") return null;
+    const qs = [...quiz.crosswordQuestions].sort((a, b) => a.order - b.order);
+    const n = qs.length;
+    if (n < 1) return null;
+    const seed = effectiveAdvancedSeed(quiz);
+    const { R, C } = computeRC(n);
+    const cells = buildAdvancedCellLabels(n, seed);
+    return { R, C, cells };
+  }, [quiz]);
+
+  /** R×C − N: ô không đánh số (đệm), chỉ lộ ảnh sau khi xong N câu hoặc thắng từ khóa */
+  const advancedPadCellCount = useMemo(() => {
+    if (quiz.type !== "crossword_advanced" || !advancedLayout) return 0;
+    const n = quiz.crosswordQuestions.length;
+    return advancedLayout.R * advancedLayout.C - n;
+  }, [quiz.type, quiz.crosswordQuestions.length, advancedLayout]);
+
   const basicAlignmentMaxCol = useMemo(() => {
     if (quiz.type !== "crossword_basic") return 0;
     return alignmentColumnZeroBased(sortedQuestions);
@@ -57,6 +89,30 @@ export default function CrosswordPlayer({
         ? normalizeKeyword(quiz.verticalWord)
         : "",
     [quiz.type, quiz.verticalWord]
+  );
+
+  const advancedNormKw = useMemo(
+    () =>
+      quiz.type === "crossword_advanced" && quiz.secretWord
+        ? normalizeKeyword(quiz.secretWord)
+        : "",
+    [quiz.type, quiz.secretWord]
+  );
+
+  const basicKeywordDisplayLetters = useMemo(
+    () =>
+      quiz.type === "crossword_basic" && quiz.verticalWord
+        ? keywordLettersPreserveSource(quiz.verticalWord)
+        : [],
+    [quiz.type, quiz.verticalWord]
+  );
+
+  const advancedKeywordDisplayLetters = useMemo(
+    () =>
+      quiz.type === "crossword_advanced" && quiz.secretWord
+        ? keywordLettersPreserveSource(quiz.secretWord)
+        : [],
+    [quiz.type, quiz.secretWord]
   );
 
   const [gameState, setGameState] = useState<{
@@ -77,13 +133,10 @@ export default function CrosswordPlayer({
 
   const [selectedQuestion, setSelectedQuestion] =
     useState<CrosswordQuestion | null>(null);
-  const [revealedParts, setRevealedParts] = useState<boolean[]>(
-    Array(quiz.crosswordQuestions.length).fill(false)
+  /** Advanced: đã mở tile cho câu `order` */
+  const [revealedByOrder, setRevealedByOrder] = useState<Record<number, boolean>>(
+    {}
   );
-  const [secretWordGuess, setSecretWordGuess] = useState("");
-  const [showSecretWordForm, setShowSecretWordForm] = useState(false);
-  const [isSecretWordFound, setIsSecretWordFound] = useState(false);
-  const [secretWordError, setSecretWordError] = useState(false);
 
   const [eliminated, setEliminated] = useState(false);
   const [globalSolved, setGlobalSolved] = useState(keywordGloballySolved);
@@ -132,6 +185,18 @@ export default function CrosswordPlayer({
   }, [globalSolved, fillAllAnswered]);
 
   useEffect(() => {
+    if (quiz.type !== "crossword_advanced") return;
+    if (!(globalSolved || wonByOwnKeyword)) return;
+    setRevealedByOrder(() => {
+      const next: Record<number, boolean> = {};
+      for (const q of quiz.crosswordQuestions) {
+        next[q.order] = true;
+      }
+      return next;
+    });
+  }, [quiz.type, quiz.crosswordQuestions, globalSolved, wonByOwnKeyword]);
+
+  useEffect(() => {
     if (!playShareLink || !eliminated || globalSolved) return;
     const poll = async () => {
       try {
@@ -158,32 +223,52 @@ export default function CrosswordPlayer({
     [gameState, quiz.crosswordQuestions]
   );
 
-  const boardReadOnly =
+  const boardReadOnlyBasic =
     quiz.type === "crossword_basic" &&
+    (globalSolved || wonByOwnKeyword || allSubQuestionsAnswered);
+
+  const boardReadOnlyAdvanced =
+    quiz.type === "crossword_advanced" &&
     (globalSolved || wonByOwnKeyword || allSubQuestionsAnswered);
 
   const hardLockedBasic =
     quiz.type === "crossword_basic" && eliminated && !globalSolved;
 
+  const hardLockedAdvanced =
+    quiz.type === "crossword_advanced" && eliminated && !globalSolved;
+
+  const hardLocked = hardLockedBasic || hardLockedAdvanced;
+
   const canOpenQuestion = (q: CrosswordQuestion) => {
     if (gameState[q.id]?.isAnswered) return false;
-    if (quiz.type === "crossword_basic" && (hardLockedBasic || boardReadOnly))
+    if (quiz.type === "crossword_basic" && (hardLockedBasic || boardReadOnlyBasic))
+      return false;
+    if (
+      quiz.type === "crossword_advanced" &&
+      (hardLockedAdvanced || boardReadOnlyAdvanced)
+    )
       return false;
     return true;
   };
 
   /** §3.3: đoán từ khóa bất cứ lúc nào — không ẩn sau khi làm hết hàng ngang. */
   const showKeywordButton =
-    quiz.type === "crossword_basic" &&
-    quiz.verticalWord &&
-    basicNormKw.length > 0 &&
+    ((quiz.type === "crossword_basic" &&
+      quiz.verticalWord &&
+      basicNormKw.length > 0) ||
+      (quiz.type === "crossword_advanced" &&
+        quiz.secretWord &&
+        advancedNormKw.length > 0)) &&
     !eliminated &&
     !globalSolved &&
     !wonByOwnKeyword;
 
   /** §3.2 mục 3: đã giải đúng từ khóa (phiên hoặc server) → lộ chữ trên dải. */
-  const keywordStripFullyRevealed =
+  const keywordStripFullyRevealedBasic =
     quiz.type === "crossword_basic" && (globalSolved || wonByOwnKeyword);
+
+  const keywordStripFullyRevealedAdvanced =
+    quiz.type === "crossword_advanced" && (globalSolved || wonByOwnKeyword);
 
   const handleQuestionClick = (question: CrosswordQuestion) => {
     if (!canOpenQuestion(question)) return;
@@ -214,16 +299,15 @@ export default function CrosswordPlayer({
     }));
   };
 
-  const getRevealedWidth = () => {
-    const answeredCount = revealedParts.filter(Boolean).length;
-    const n = quiz.crosswordQuestions.length;
-    return answeredCount > 0 && n > 0 ? answeredCount * (100 / n) : 0;
-  };
-
   const handleAnswerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedQuestion) return;
-    if (quiz.type === "crossword_basic" && (hardLockedBasic || boardReadOnly))
+    if (quiz.type === "crossword_basic" && (hardLockedBasic || boardReadOnlyBasic))
+      return;
+    if (
+      quiz.type === "crossword_advanced" &&
+      (hardLockedAdvanced || boardReadOnlyAdvanced)
+    )
       return;
 
     const isCorrect = answersMatch(
@@ -243,14 +327,10 @@ export default function CrosswordPlayer({
       }));
 
       if (quiz.type === "crossword_advanced") {
-        const index = sortedQuestions.findIndex((q) => q.id === selectedQuestion.id);
-        if (index !== -1) {
-          setRevealedParts((prev) => {
-            const newParts = [...prev];
-            newParts[index] = true;
-            return newParts;
-          });
-        }
+        setRevealedByOrder((prev) => ({
+          ...prev,
+          [selectedQuestion.order]: true,
+        }));
       }
 
       setSelectedQuestion(null);
@@ -265,22 +345,6 @@ export default function CrosswordPlayer({
     }
   };
 
-  const handleSecretWordSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!quiz.secretWord) return;
-
-    const isCorrect =
-      secretWordGuess.toLowerCase().trim() ===
-      quiz.secretWord.toLowerCase().trim();
-    if (isCorrect) {
-      setIsSecretWordFound(true);
-      setShowSecretWordForm(false);
-      setSecretWordError(false);
-    } else {
-      setSecretWordError(true);
-    }
-  };
-
   const persistEliminated = () => {
     try {
       sessionStorage.setItem(eliminatedStorageKey(storageKey), "1");
@@ -292,10 +356,15 @@ export default function CrosswordPlayer({
 
   const submitKeywordGuess = async () => {
     setKeywordSubmitError("");
-    const vw = quiz.verticalWord;
-    if (!vw || quiz.type !== "crossword_basic") return;
+    const keywordSource =
+      quiz.type === "crossword_basic"
+        ? quiz.verticalWord
+        : quiz.type === "crossword_advanced"
+          ? quiz.secretWord
+          : null;
+    if (!keywordSource) return;
 
-    if (!answersMatch(vw, keywordDraft)) {
+    if (!answersMatch(keywordSource, keywordDraft)) {
       persistEliminated();
       setShowKeywordModal(false);
       setKeywordDraft("");
@@ -376,25 +445,29 @@ export default function CrosswordPlayer({
       {quiz.type === "crossword_basic" && quiz.verticalWord && basicNormKw && (
         <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-4 space-y-3">
           <p className="text-sm font-medium text-gray-700">
-            {keywordStripFullyRevealed
-              ? "Từ khóa — đã giải (hiển thị theo chuỗi chuẩn hóa khi chơi)"
-              : `Từ khóa — ${basicNormKw.length} ký tự (sau chuẩn hóa)`}
+            {keywordStripFullyRevealedBasic
+              ? "Từ khóa — đã giải"
+              : `Từ khóa — ${basicNormKw.length} ký tự`}
           </p>
           <div
             className="flex flex-wrap gap-1"
             data-testid="keyword-strip"
             aria-label={
-              keywordStripFullyRevealed
-                ? `Từ khóa đã lộ: ${basicNormKw}`
+              keywordStripFullyRevealedBasic
+                ? `Từ khóa đã lộ: ${basicKeywordDisplayLetters.length === basicNormKw.length ? basicKeywordDisplayLetters.join("") : basicNormKw}`
                 : `Từ khóa, ${basicNormKw.length} ô trống`
             }
           >
             {Array.from({ length: basicNormKw.length }, (_, i) => {
-              const letter = keywordStripFullyRevealed ? basicNormKw[i] : null;
+              const letter = keywordStripFullyRevealedBasic
+                ? basicKeywordDisplayLetters.length === basicNormKw.length
+                  ? basicKeywordDisplayLetters[i]!
+                  : basicNormKw[i]!
+                : null;
               return (
                 <div
                   key={i}
-                  className={`w-8 h-8 shrink-0 flex items-center justify-center text-sm font-bold border-2
+                  className={`min-w-[2rem] h-8 px-0.5 shrink-0 flex items-center justify-center text-sm font-bold border-2
                     ${
                       letter
                         ? "border-indigo-500 bg-indigo-50 text-indigo-800"
@@ -407,18 +480,11 @@ export default function CrosswordPlayer({
               );
             })}
           </div>
-          {keywordStripFullyRevealed &&
-            quiz.verticalWord.trim() &&
-            quiz.verticalWord !== basicNormKw && (
-              <p className="text-xs text-gray-600">
-                Bản ghi khi tạo bài: <span className="font-medium">{quiz.verticalWord}</span>
-              </p>
-            )}
-          <p className="text-xs text-gray-500">
-            {keywordStripFullyRevealed
-              ? "Các chữ trên là chuỗi dùng khi so đúng/sai (bỏ dấu, bỏ khoảng trắng, không phân biệt hoa thường)."
-              : "Ô trên chỉ gợi độ dài; không hiện chữ từ các câu đã đúng. Dùng nút bên dưới để đoán cả từ khóa (có xác nhận rủi ro)."}
-          </p>
+          {!keywordStripFullyRevealedBasic && (
+            <p className="text-xs text-gray-500">
+              Ô trên chỉ gợi độ dài; không hiện chữ từ các câu đã đúng. Dùng nút bên dưới để đoán cả từ khóa (có xác nhận rủi ro).
+            </p>
+          )}
           {showKeywordButton && (
             <button
               type="button"
@@ -436,7 +502,69 @@ export default function CrosswordPlayer({
         </div>
       )}
 
-      {hardLockedBasic && (
+      {quiz.type === "crossword_advanced" && quiz.secretWord && advancedNormKw && (
+        <div
+          className="rounded-lg border border-gray-200 bg-gray-50/80 p-4 space-y-3"
+          data-testid="keyword-strip-advanced"
+        >
+          <p className="text-sm font-medium text-gray-700">
+            {keywordStripFullyRevealedAdvanced
+              ? "Từ khóa bí ẩn — đã giải"
+              : `Từ khóa bí ẩn — ${advancedNormKw.length} ký tự`}
+          </p>
+          <div
+            className="flex flex-wrap gap-1"
+            aria-label={
+              keywordStripFullyRevealedAdvanced
+                ? `Từ khóa đã lộ: ${advancedKeywordDisplayLetters.length === advancedNormKw.length ? advancedKeywordDisplayLetters.join("") : advancedNormKw}`
+                : `Từ khóa, ${advancedNormKw.length} ô trống`
+            }
+          >
+            {Array.from({ length: advancedNormKw.length }, (_, i) => {
+              const letter = keywordStripFullyRevealedAdvanced
+                ? advancedKeywordDisplayLetters.length === advancedNormKw.length
+                  ? advancedKeywordDisplayLetters[i]!
+                  : advancedNormKw[i]!
+                : null;
+              return (
+                <div
+                  key={i}
+                  className={`min-w-[2rem] h-8 px-0.5 shrink-0 flex items-center justify-center text-sm font-bold border-2
+                    ${
+                      letter
+                        ? "border-indigo-500 bg-indigo-50 text-indigo-800"
+                        : "border-dashed border-gray-300 bg-transparent"
+                    }`}
+                  aria-hidden={letter ? undefined : true}
+                >
+                  {letter ?? ""}
+                </div>
+              );
+            })}
+          </div>
+          {!keywordStripFullyRevealedAdvanced && (
+            <p className="text-xs text-gray-500">
+              Lưới ảnh gợi ý từ khóa bên dưới. Dùng nút để đoán cả từ khóa (có xác nhận rủi ro).
+            </p>
+          )}
+          {showKeywordButton && (
+            <button
+              type="button"
+              onClick={() => {
+                setKeywordDraft("");
+                setKeywordRiskChecked(false);
+                setKeywordSubmitError("");
+                setShowKeywordModal(true);
+              }}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium"
+            >
+              Trả lời từ khóa
+            </button>
+          )}
+        </div>
+      )}
+
+      {hardLocked && (
         <div className="rounded-md bg-amber-50 text-amber-900 px-4 py-3 text-sm">
           Bạn đã đoán sai từ khóa và không còn quyền trả lời.{" "}
           {playShareLink
@@ -462,7 +590,8 @@ export default function CrosswordPlayer({
         </p>
       )}
 
-      {showKeywordModal && quiz.type === "crossword_basic" && (
+      {showKeywordModal &&
+        (quiz.type === "crossword_basic" || quiz.type === "crossword_advanced") && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           role="dialog"
@@ -526,133 +655,52 @@ export default function CrosswordPlayer({
         </div>
       )}
 
-      {quiz.type === "crossword_advanced" && quiz.imageUrl && (
-        <>
-          <div className="relative w-full h-[400px] bg-gray-100 rounded-lg overflow-hidden">
-            {allSubQuestionsAnswered ? (
-              <Image
-                src={quiz.imageUrl || ""}
-                alt={quiz.title}
-                fill
-                className="object-contain"
-              />
-            ) : (
-              <div className="relative h-full w-full overflow-hidden">
-                <div
-                  className="absolute inset-0 w-full h-full"
-                  style={{
-                    clipPath: `inset(0 ${100 - getRevealedWidth()}% 0 0)`,
-                    transition: "clip-path 0.3s ease-in-out",
-                  }}
-                >
-                  <Image
-                    src={quiz.imageUrl || ""}
-                    alt={quiz.title}
-                    fill
-                    className="object-contain"
-                    sizes="100vw"
-                    priority
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+      {quiz.type === "crossword_advanced" && quiz.imageUrl && advancedLayout && (
+        <CrosswordAdvancedImageGrid
+          imageUrl={quiz.imageUrl}
+          title={quiz.title}
+          R={advancedLayout.R}
+          C={advancedLayout.C}
+          cells={advancedLayout.cells}
+          revealedByOrder={revealedByOrder}
+          forceRevealAll={
+            globalSolved || wonByOwnKeyword || allSubQuestionsAnswered
+          }
+        />
+      )}
 
-          {quiz.type === "crossword_advanced" && quiz.secretWord && (
-            <div className="bg-white p-6 rounded-lg shadow mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium">Từ khóa bí ẩn:</h3>
-                {!isSecretWordFound && !showSecretWordForm && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowSecretWordForm(true);
-                      setSecretWordError(false);
-                    }}
-                    className="text-indigo-600 hover:text-indigo-700 font-medium"
-                  >
-                    Đoán từ khóa
-                  </button>
-                )}
-              </div>
-
-              {showSecretWordForm ? (
-                <form onSubmit={handleSecretWordSubmit} className="space-y-4">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={secretWordGuess}
-                      onChange={(e) => {
-                        setSecretWordGuess(e.target.value);
-                        setSecretWordError(false);
-                      }}
-                      className={`flex-1 border rounded px-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 outline-none
-                        ${secretWordError ? "border-red-500" : ""}`}
-                      placeholder="Nhập từ khóa bí ẩn..."
-                      autoFocus
-                    />
-                    <button
-                      type="submit"
-                      className="bg-indigo-600 text-white px-4 py-1.5 rounded hover:bg-indigo-700 transition-colors"
-                    >
-                      Kiểm tra
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowSecretWordForm(false);
-                        setSecretWordError(false);
-                      }}
-                      className="border border-gray-300 px-4 py-1.5 rounded hover:bg-gray-50 transition-colors"
-                    >
-                      Hủy
-                    </button>
-                  </div>
-                  {secretWordError && (
-                    <p className="text-red-500 text-sm">
-                      Từ khóa không chính xác, vui lòng thử lại!
-                    </p>
-                  )}
-                </form>
-              ) : (
-                <div className="flex justify-center space-x-2">
-                  {Array.from(quiz.secretWord).map((letter, index) => (
-                    <div
-                      key={index}
-                      className={`w-10 h-10 border-2 flex items-center justify-center font-bold text-xl
-                        ${
-                          isSecretWordFound
-                            ? "border-green-500 bg-green-50 text-green-700"
-                            : "border-indigo-500"
-                        }`}
-                    >
-                      {isSecretWordFound ? letter : "?"}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {isSecretWordFound && (
-                <div className="mt-4 text-center text-green-600">
-                  <p>Chúc mừng! Bạn đã tìm ra từ khóa bí ẩn!</p>
-                </div>
-              )}
-            </div>
+      {quiz.type === "crossword_advanced" && (
+        <p className="text-sm text-gray-600">
+          Gợi ý từ khóa nằm trong lưới ảnh; trả lời đúng từng câu để mở đúng một mảnh (số trên ô =
+          thứ tự câu).
+          {advancedPadCellCount > 0 && (
+            <>
+              {" "}
+              Có {advancedPadCellCount} ô không đánh số (ô đệm): không gắn câu hỏi; mảnh ảnh tại đó
+              chỉ hiện sau khi bạn trả lời đúng toàn bộ các câu hàng ngang hoặc đoán đúng từ khóa.
+            </>
           )}
-        </>
+        </p>
       )}
 
       <div className="bg-white p-6 rounded-lg shadow">
         <div className="space-y-6">
           {sortedQuestions.map((question) => {
             const state = gameState[question.id];
-            const answer = question.answer.toUpperCase();
+            const answerRaw = question.answer;
+            const lettersRow = answerLettersStripSpaces(answerRaw).toUpperCase();
+            const keywordVisibleCol =
+              quiz.type === "crossword_basic"
+                ? visibleLetterIndexZeroBased(answerRaw, question.letterIndex)
+                : 0;
             const rowLocked =
-              quiz.type === "crossword_basic" &&
-              (hardLockedBasic || boardReadOnly);
+              (quiz.type === "crossword_basic" &&
+                (hardLockedBasic || boardReadOnlyBasic)) ||
+              (quiz.type === "crossword_advanced" &&
+                (hardLockedAdvanced || boardReadOnlyAdvanced));
 
             return (
-              <div key={question.id}>
+              <div key={question.id} data-testid={`crossword-question-${question.order}`}>
                 <div
                   className={`transition-colors duration-200
                     ${
@@ -673,22 +721,22 @@ export default function CrosswordPlayer({
                         quiz.type === "crossword_basic"
                           ? {
                               marginLeft: `${
-                                (basicAlignmentMaxCol - (question.letterIndex - 1)) *
+                                (basicAlignmentMaxCol - keywordVisibleCol) *
                                 ALIGN_UNIT_REM
                               }rem`,
                             }
                           : undefined
                       }
                     >
-                      {answer.split("").map((letter, i) => (
+                      {[...lettersRow].map((letter, vi) => (
                         <div
-                          key={i}
+                          key={vi}
                           className={`w-8 h-8 border-2 flex items-center justify-center font-medium shrink-0
                             transition-all duration-200 ease-in-out
                             ${
                               state.isAnswered
                                 ? quiz.type === "crossword_basic" &&
-                                  i === question.letterIndex - 1
+                                  vi === keywordVisibleCol
                                   ? "border-indigo-500 bg-indigo-50 text-indigo-600 scale-110"
                                   : "border-green-500 bg-green-50"
                                 : state.isActive
@@ -705,7 +753,12 @@ export default function CrosswordPlayer({
 
                 {state.isActive && !rowLocked && (
                   <div className="mt-3 ml-[4rem] pl-4 border-l-2 border-indigo-200">
-                    <p className="mb-2 text-gray-600">{question.question}</p>
+                    <p className="mb-2 text-gray-600 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                      <span>{question.question}</span>
+                      <span className="text-sm text-gray-500 tabular-nums">
+                        ({answerLetterCountDisplay(answerRaw)} chữ)
+                      </span>
+                    </p>
                     <form onSubmit={handleAnswerSubmit} className="space-y-2">
                       <div className="flex space-x-2">
                         <input
@@ -723,6 +776,7 @@ export default function CrosswordPlayer({
                           className={`flex-1 border rounded px-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-500 outline-none
                             ${state.showError ? "border-red-500" : ""}`}
                           placeholder="Nhập câu trả lời..."
+                          aria-label={`Đáp án câu ${question.order}`}
                           autoFocus
                         />
                         <button

@@ -26,6 +26,10 @@ export async function POST(request: Request) {
 
     if (data.type === "crossword_basic" || data.type === "crossword_advanced") {
       const norm = data.normalizedCrosswordQuestions!;
+      const layoutSeed =
+        data.type === "crossword_advanced"
+          ? Math.floor(Math.random() * 0x7fffffff)
+          : null;
       const quiz = await prisma.quiz.create({
         data: {
           title: data.title,
@@ -33,6 +37,7 @@ export async function POST(request: Request) {
           verticalWord: data.verticalWord ?? undefined,
           secretWord: data.secretWord ?? undefined,
           imageUrl: data.imageUrl ?? undefined,
+          advancedLayoutSeed: layoutSeed ?? undefined,
           shareLink,
           creatorId: session.user.id,
           crosswordQuestions: {
@@ -106,6 +111,9 @@ export async function PUT(request: Request) {
       );
       if (!norm.ok) {
         return NextResponse.json({ message: norm.message }, { status: 400 });
+      }
+      if (type === "crossword_advanced") {
+        updateData.advancedLayoutSeed = Math.floor(Math.random() * 0x7fffffff);
       }
       updateData.crosswordQuestions = {
         create: norm.questions.map((q) => ({

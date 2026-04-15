@@ -23,6 +23,10 @@
 # production
 /build
 
+# uploaded images (E2E tạo stub trong public/uploads)
+/public/uploads/*
+!/public/uploads/.gitkeep
+
 # misc
 .DS_Store
 *.pem

@@ -1,11 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { E2E_SHARE_LINK } from "./global-setup";
+import { E2E_SHARE_BASIC } from "./constants";
 
 test.describe("Crossword basic — public play (task-002)", () => {
   test("§3.2–3.3: có dải từ khóa và nút Trả lời từ khóa khi mở link", async ({
     page,
   }) => {
-    await page.goto(`/play/${E2E_SHARE_LINK}`);
+    await page.goto(`/play/${E2E_SHARE_BASIC}`);
     await expect(page.getByRole("heading", { name: "E2E Crossword Basic" })).toBeVisible();
     await expect(page.getByText(/Từ khóa — 2 ký tự/)).toBeVisible();
     await expect(
@@ -16,7 +16,7 @@ test.describe("Crossword basic — public play (task-002)", () => {
   test("§3.3: sau khi trả lời đúng cả hai hàng ngang, nút Trả lời từ khóa vẫn hiện", async ({
     page,
   }) => {
-    await page.goto(`/play/${E2E_SHARE_LINK}`);
+    await page.goto(`/play/${E2E_SHARE_BASIC}`);
 
     await page.getByText("Câu 1:").click();
     await page.getByPlaceholder("Nhập câu trả lời...").fill("HAND");
@@ -34,7 +34,7 @@ test.describe("Crossword basic — public play (task-002)", () => {
   test("§3.3: mở modal từ khóa có checkbox xác nhận và ô nhập", async ({
     page,
   }) => {
-    await page.goto(`/play/${E2E_SHARE_LINK}`);
+    await page.goto(`/play/${E2E_SHARE_BASIC}`);
     await page.getByRole("button", { name: "Trả lời từ khóa" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await expect(
@@ -49,7 +49,7 @@ test.describe("Crossword basic — public play (task-002)", () => {
   test("§3.2 mục 3: đoán đúng từ khóa → dải ô hiện đủ chữ (chuẩn hóa)", async ({
     page,
   }) => {
-    await page.goto(`/play/${E2E_SHARE_LINK}`);
+    await page.goto(`/play/${E2E_SHARE_BASIC}`);
     await page.getByRole("button", { name: "Trả lời từ khóa" }).click();
     await page.getByRole("checkbox", { name: /Tôi đã hiểu và muốn gửi đoán/ }).check();
     await page.getByPlaceholder("Nhập từ khóa đầy đủ…").fill("HI");

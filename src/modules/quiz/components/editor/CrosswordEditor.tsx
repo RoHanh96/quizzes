@@ -1,13 +1,19 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import CrosswordPreview from "./CrosswordPreview";
 import { normalizeKeyword } from "@/modules/quiz/lib/text";
 import {
   validateBasicDraftMessage,
   getBasicAnswerErrorsByPosition,
 } from "@/modules/quiz/validation/crossword-basic";
+import { computeRC } from "@/modules/quiz/lib/crossword-advanced-grid";
+import {
+  ADVANCED_IMAGE_MIN_BYTES,
+  advancedImageTooSmallMessage,
+} from "@/modules/quiz/validation/crossword-advanced";
 
 interface CrosswordQuestion {
   id?: string;
@@ -32,6 +38,7 @@ export interface CrosswordEditorProps {
 
 export default function CrosswordEditor({ type, initialData }: CrosswordEditorProps) {
   const router = useRouter();
+  const advancedFileRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(initialData?.title || "");
   const [verticalWord, setVerticalWord] = useState(initialData?.verticalWord || "");
   const [secretWord, setSecretWord] = useState(initialData?.secretWord || "");
@@ -44,13 +51,13 @@ export default function CrosswordEditor({ type, initialData }: CrosswordEditorPr
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
 
   function createEmptyQuestion(position: number): CrosswordQuestion {
     return {
       question: "",
       answer: "",
       position,
-      letterIndex: type === "crossword_advanced" ? 1 : undefined,
     };
   }
 
@@ -123,6 +130,14 @@ export default function CrosswordEditor({ type, initialData }: CrosswordEditorPr
     return validateBasicDraftMessage(verticalWord, drafts);
   }, [type, verticalWord, questions]);
 
+  const advancedGridHint = useMemo(() => {
+    if (type !== "crossword_advanced") return null;
+    const n = questions.filter((q) => q.question?.trim() && q.answer?.trim()).length;
+    if (n < 1) return "Thêm ít nhất một câu để xem kích thước lưới (R×C).";
+    const { R, C } = computeRC(n);
+    return `Với ${n} câu: lưới gợi ý ảnh ${R}×${C} ô (đủ ${n} ô, phủ kín ảnh). Gợi ý tỉ lệ ảnh 16:9.`;
+  }, [type, questions]);
+
   const basicAnswerFieldErrors = useMemo(() => {
     if (type !== "crossword_basic" || !verticalWord.trim()) {
       return {} as Record<number, string>;
@@ -180,7 +195,9 @@ export default function CrosswordEditor({ type, initialData }: CrosswordEditorPr
     }
 
     if (type === "crossword_advanced") {
-      if (!imageUrl) return "Vui lòng nhập URL hình ảnh";
+      if (!imageUrl.trim()) {
+        return "Vui lòng upload ảnh gợi ý (tối thiểu 500 KB) hoặc giữ ảnh hiện tại khi sửa.";
+      }
       if (!secretWord.trim()) return "Vui lòng nhập từ khóa bí ẩn";
       for (const q of questions) {
         if (!q.question || !q.answer) {
@@ -204,6 +221,22 @@ export default function CrosswordEditor({ type, initialData }: CrosswordEditorPr
     setError("");
 
     try {
+      let finalImageUrl = imageUrl;
+      if (type === "crossword_advanced" && pendingImageFile) {
+        const fd = new FormData();
+        fd.append("file", pendingImageFile);
+        const up = await fetch("/api/upload", { method: "POST", body: fd });
+        if (!up.ok) {
+          const j = (await up.json().catch(() => ({}))) as { message?: string };
+          throw new Error(j.message || "Upload ảnh thất bại.");
+        }
+        const u = (await up.json()) as { url?: string };
+        if (!u.url) throw new Error("Upload không trả về URL.");
+        finalImageUrl = u.url;
+        setImageUrl(u.url);
+        setPendingImageFile(null);
+      }
+
       const url = initialData?.id
         ? `/api/quizzes/${initialData.id}`
         : "/api/quizzes";
@@ -225,7 +258,6 @@ export default function CrosswordEditor({ type, initialData }: CrosswordEditorPr
                 answer: q.answer,
                 order: i + 1,
                 position: q.position,
-                letterIndex: q.letterIndex ?? 1,
               })),
       };
 
@@ -233,7 +265,7 @@ export default function CrosswordEditor({ type, initialData }: CrosswordEditorPr
         body.verticalWord = verticalWord;
       }
       if (type === "crossword_advanced") {
-        body.imageUrl = imageUrl;
+        body.imageUrl = finalImageUrl;
         body.secretWord = secretWord;
       }
 
@@ -324,21 +356,75 @@ export default function CrosswordEditor({ type, initialData }: CrosswordEditorPr
       )}
 
       {type === "crossword_advanced" && (
-        <div>
-          <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700">
-            URL Hình ảnh
-          </label>
-          <input
-            id="imageUrl"
-            type="url"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-            required
-          />
-          <p className="mt-1 text-sm text-gray-500">
-            Hình ảnh này sẽ được hiện ra dần dần khi người chơi trả lời đúng.
-          </p>
+        <div className="space-y-3">
+          <div>
+            <span className="block text-sm font-medium text-gray-700">
+              Ảnh gợi ý từ khóa (bắt buộc, tối thiểu 500 KB)
+            </span>
+            <input
+              ref={advancedFileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                if (f.size < ADVANCED_IMAGE_MIN_BYTES) {
+                  setError(advancedImageTooSmallMessage());
+                  e.target.value = "";
+                  return;
+                }
+                setError("");
+                setPendingImageFile(f);
+                setImageUrl("");
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => advancedFileRef.current?.click()}
+              className="mt-1 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Chọn ảnh từ máy
+            </button>
+            {pendingImageFile && (
+              <p className="mt-1 text-sm text-green-700">
+                Đã chọn: {pendingImageFile.name} — sẽ upload khi lưu.
+              </p>
+            )}
+            {imageUrl && !pendingImageFile && (
+              <p className="mt-1 text-sm text-gray-600">Ảnh hiện tại: {imageUrl}</p>
+            )}
+          </div>
+          <div>
+            <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700">
+              Hoặc URL ảnh (dev / đã có CDN)
+            </label>
+            <input
+              id="imageUrl"
+              type="url"
+              value={pendingImageFile ? "" : imageUrl}
+              onChange={(e) => {
+                setImageUrl(e.target.value);
+                setPendingImageFile(null);
+              }}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              placeholder="https://..."
+            />
+          </div>
+          {(imageUrl || pendingImageFile) && (
+            <div className="relative w-full max-w-lg aspect-video rounded-lg border overflow-hidden bg-gray-100">
+              <Image
+                src={pendingImageFile ? URL.createObjectURL(pendingImageFile) : imageUrl}
+                alt="Preview ảnh advanced"
+                fill
+                className="object-cover"
+                unoptimized={Boolean(pendingImageFile)}
+              />
+            </div>
+          )}
+          {advancedGridHint && (
+            <p className="text-sm text-gray-600 whitespace-pre-line">{advancedGridHint}</p>
+          )}
         </div>
       )}
 
@@ -374,7 +460,7 @@ export default function CrosswordEditor({ type, initialData }: CrosswordEditorPr
         <p className="text-sm text-gray-500">
           {type === "crossword_basic"
             ? `Basic: số câu = độ dài từ khóa đã chuẩn hóa (${normalizeKeyword(verticalWord).length} câu khi từ khóa hợp lệ). Mỗi đáp án phải chứa đúng một ký tự của từ khóa (theo thứ tự câu 1 → ký tự 1, …) — bỏ qua dấu và khoảng trắng khi kiểm tra.`
-            : "Mỗi câu trả lời đúng sẽ mở khóa một phần của hình ảnh."}
+            : "Mỗi câu trả lời đúng mở đúng một ô trên lưới ảnh (số trên ô = thứ tự câu)."}
         </p>
 
         {questions.map((question, index) => (
@@ -437,27 +523,6 @@ export default function CrosswordEditor({ type, initialData }: CrosswordEditorPr
                 )}
             </div>
 
-            {type === "crossword_advanced" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Vị trí chữ cái đóng góp vào từ khóa (bắt đầu từ 1)
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  value={question.letterIndex ?? 1}
-                  onChange={(e) =>
-                    handleQuestionChange(
-                      index,
-                      "letterIndex",
-                      parseInt(e.target.value, 10)
-                    )
-                  }
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                  required
-                />
-              </div>
-            )}
           </div>
         ))}
       </div>

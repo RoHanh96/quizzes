@@ -20,7 +20,7 @@ export type NormalizedCrosswordQuestion = {
 /**
  * Chuẩn hóa câu hỏi crossword từ client.
  * - **basic**: bỏ qua `letterIndex` từ body; gán bằng `assignLetterIndexesForBasic` + `verticalWord`.
- * - **advanced**: giữ `letterIndex` từ client (mặc định 1 nếu thiếu).
+ * - **advanced**: không dùng `letterIndex` (task-003); luôn `0`; sort theo `order`.
  */
 export function normalizeCrosswordQuestions(
   raw: unknown,
@@ -59,7 +59,14 @@ export function normalizeCrosswordQuestions(
     return assignLetterIndexesForBasic(vw, drafts);
   }
 
-  const out: NormalizedCrosswordQuestion[] = [];
+  type Draft = {
+    question: string;
+    answer: string;
+    order: number;
+    position: number;
+  };
+
+  const drafts: Draft[] = [];
 
   for (let i = 0; i < raw.length; i++) {
     const q = raw[i] as IncomingCrosswordQuestion;
@@ -71,18 +78,18 @@ export function normalizeCrosswordQuestions(
 
     const order = typeof q?.order === "number" ? q.order : i + 1;
     const position = typeof q?.position === "number" ? q.position : order;
-    const letterIndex =
-      typeof q?.letterIndex === "number" && q.letterIndex >= 1 ? q.letterIndex : 1;
-
-    if (letterIndex > answer.length) {
-      return {
-        ok: false,
-        message: `Câu ${i + 1}: letterIndex vượt quá độ dài đáp án.`,
-      };
-    }
-
-    out.push({ question, answer, order, position, letterIndex });
+    drafts.push({ question, answer, order, position });
   }
+
+  drafts.sort((a, b) => a.order - b.order);
+
+  const out: NormalizedCrosswordQuestion[] = drafts.map((d, i) => ({
+    question: d.question,
+    answer: d.answer,
+    order: i + 1,
+    position: i + 1,
+    letterIndex: 0,
+  }));
 
   return { ok: true, questions: out };
 }

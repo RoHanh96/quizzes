@@ -117,10 +117,30 @@ export function getBasicAnswerErrorsByPosition(
   return errors;
 }
 
-/** Cột căn chỉnh 0-based: ô chứa chữ từ khóa thẳng cột */
+/**
+ * Chỉ số ô 0-based trên hàng **chỉ gồm ký tự không space**, tại vị trí `letterIndex` (1-based, theo chuỗi đáp án DB — luôn trỏ tới ký tự không space).
+ */
+export function visibleLetterIndexZeroBased(
+  answer: string,
+  letterIndexOneBased: number
+): number {
+  const raw = letterIndexOneBased - 1;
+  let visible = 0;
+  for (let j = 0; j < answer.length; j++) {
+    if (/\s/.test(answer[j]!)) continue;
+    if (j === raw) return visible;
+    visible++;
+  }
+  return 0;
+}
+
+/** Cột căn chỉnh 0-based: ô chứa chữ từ khóa thẳng cột (theo lưới ô không tính space). */
 export function alignmentColumnZeroBased(
-  questions: Pick<NormalizedCrosswordQuestion, "letterIndex">[]
+  questions: Pick<NormalizedCrosswordQuestion, "letterIndex" | "answer">[]
 ): number {
   if (questions.length === 0) return 0;
-  return Math.max(0, ...questions.map((q) => q.letterIndex - 1));
+  return Math.max(
+    0,
+    ...questions.map((q) => visibleLetterIndexZeroBased(q.answer, q.letterIndex))
+  );
 }

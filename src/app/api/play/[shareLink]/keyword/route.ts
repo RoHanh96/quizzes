@@ -46,10 +46,15 @@ export async function POST(
 
   const quiz = await prisma.quiz.findFirst({
     where: { shareLink },
-    select: { id: true, type: true, verticalWord: true },
+    select: { id: true, type: true, verticalWord: true, secretWord: true },
   });
 
-  if (!quiz || quiz.type !== "crossword_basic" || !quiz.verticalWord) {
+  const isBasic =
+    quiz?.type === "crossword_basic" && Boolean(quiz.verticalWord?.trim());
+  const isAdvanced =
+    quiz?.type === "crossword_advanced" && Boolean(quiz.secretWord?.trim());
+
+  if (!quiz || (!isBasic && !isAdvanced)) {
     return NextResponse.json({ ok: false, message: "Không tìm thấy quiz." }, { status: 404 });
   }
 
@@ -61,7 +66,8 @@ export async function POST(
     return NextResponse.json({ ok: true, alreadySolved: true });
   }
 
-  if (!answersMatch(quiz.verticalWord, guess)) {
+  const keyword = isBasic ? quiz.verticalWord! : quiz.secretWord!;
+  if (!answersMatch(keyword, guess)) {
     return NextResponse.json({ ok: false, message: "Sai từ khóa." }, { status: 200 });
   }
 

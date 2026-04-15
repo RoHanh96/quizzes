@@ -24,6 +24,7 @@ File này là **cái nhìn tổng quát** (đã làm / đang làm / còn nợ). 
 |----|------|------------|-----------------|
 | [001](./task-001-quiz-refactor/) | Quiz refactor (module, API, bỏ Game) | **Gần xong** | Phase 0–5 xong; Phase 6: còn registry đầy đủ & alias `@/modules` tùy chọn. Phase 5: nợ **`getForPlay`** tách payload (ẩn đáp án MC khi public). Chi tiết: [refactor-plan.md](./task-001-quiz-refactor/refactor-plan.md). |
 | [002](./task-002-crossword-basic-spec/) | Crossword basic — spec & triển khai | **Hoàn thành** (MVP code) | Pipeline `normalizeCrosswordQuestions` + gán index; editor/preview/player + `answersMatch`; e2e Playwright tối thiểu + checklist §5.1 trong [spec.md](./task-002-crossword-basic-spec/spec.md); kiểm thử tay A4–A6 còn mở. |
+| [003](./task-003-crossword-advanced-spec/) | Crossword advanced — ảnh + lưới + keyword | **Chưa bắt đầu** | Spec: [spec.md](./task-003-crossword-advanced-spec/spec.md) — một ảnh, lưới **R×C = N** (ước số, gần vuông), số 1…N random, đúng câu mở đúng ô; đoán secret + modal như basic; min 500KB. |
 
 ---
 
@@ -35,4 +36,4 @@ Các mục chưa gom vào folder riêng nhưng liên quan trực tiếp bảng t
 
 ---
 
-_Cập nhật lần cuối: 2026-04-15 — task 002: thêm e2e + checklist acceptance trong spec._
+_Cập nhật lần cuối: 2026-04-15 — thêm task 003 (advanced image grid spec)._

@@ -18,14 +18,14 @@ if (!files.length) {
   process.exit(1);
 }
 
-/** Đại diện: `src/app/(dashboard)/quizzes/page.tsx` + `src/app/page.tsx` (admin home) */
+/** Đại diện: `QuizListView` (/, /quizzes) — shell + thẻ quiz */
 const needles = [
   "text-indigo-600",
   "bg-indigo-600",
   "container",
-  "text-4xl",
+  "text-3xl",
   "min-h-screen",
-  "p-24",
+  "max-w-7xl",
 ];
 
 let okFile = null;

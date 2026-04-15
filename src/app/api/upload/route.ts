@@ -3,6 +3,7 @@ import { writeFile } from "fs/promises";
 import { join } from "path";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { ADVANCED_IMAGE_MIN_BYTES } from "@/modules/quiz/validation/crossword-advanced";
 
 export async function POST(request: Request) {
   try {
@@ -21,6 +22,15 @@ export async function POST(request: Request) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+
+    if (buffer.length < ADVANCED_IMAGE_MIN_BYTES) {
+      return NextResponse.json(
+        {
+          message: `File quá nhỏ: tối thiểu ${ADVANCED_IMAGE_MIN_BYTES / 1024} KB (ảnh gợi ý advanced).`,
+        },
+        { status: 400 }
+      );
+    }
 
     // Tạo tên file duy nhất để tránh trùng lặp
     const timestamp = Date.now();
