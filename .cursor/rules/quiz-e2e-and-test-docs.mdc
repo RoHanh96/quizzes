@@ -1,0 +1,40 @@
+---
+description: E2E Playwright theo task + cập nhật tài liệu kịch bản test (kể cả fix bug)
+alwaysApply: true
+---
+
+# E2E Playwright & tài liệu test theo task
+
+## Khi nào bắt buộc
+
+- **Task mới** (feature / refactor có hành vi UI hoặc API dùng từ trình duyệt): thêm hoặc mở rộng Playwright trong `e2e/`, đồng bộ **tài liệu kịch bản** trong folder `tasks/task-NNN-*/`.
+- **Crossword advanced (task 003):** mọi thay đổi hành vi **play public**, **từ khóa / lưới ảnh**, hoặc **form admin advanced** phải kèm cập nhật `e2e/task-003-*.spec.ts` và bảng trong `tasks/task-003-crossword-advanced-spec/e2e-test-report.md`. Seed mới → `e2e/constants.ts` + `e2e/global-setup.ts`.
+- **Fix bug** có nguy cơ tái diễn (UI, luồng đăng nhập, form, chơi quiz, link public): thêm **ít nhất một** test hồi quy trong `e2e/` (hoặc mở rộng spec có sẵn) và **ghi vào tài liệu test** của task liên quan (xem dưới).
+- **fix-bug.md ↔ e2e-test-report (bắt buộc từ đây):** mỗi mục trong `tasks/task-NNN-*/fix-bug.md` có hành vi **nhìn thấy từ trình duyệt** phải có (1) dòng trong **`e2e-test-report.md`** của cùng task: mã kịch bản (E… / E3-FIX… / E3-§…), file spec `e2e/*.spec.ts`, và sau khi có test thì cột **Pass** trong bảng theo dõi; (2) test Playwright tự động trong `e2e/` (trừ khi team ghi rõ chỉ QA tay). Không để bug đã sửa chỉ nằm trong `fix-bug.md` mà báo cáo E2E không ánh xạ tới auto test.
+
+## Cấu trúc code E2E (bám mẫu task 002)
+
+- **File spec theo vùng / task:** `e2e/task-NNN-mo-ta-ngan.spec.ts` (hoặc tên vùng rõ nghĩa). Nhóm `test.describe` theo task hoặc theo màn hình.
+- **Hằng số seed / share link:** `e2e/constants.ts` — **không** import từ `global-setup.ts` trong spec (tránh kéo Prisma vào test).
+- **Seed DB:** `e2e/global-setup.ts` — xóa + tạo lại quiz theo `shareLink` cần thiết; user `admin@example.com` / `e2e-seed@example.com` nếu cần.
+- **Helper dùng lại:** `e2e/helpers/*.ts` (ví dụ `loginAsAdmin`).
+- **Luồng user thật trong test:** `goto`, `click`, `fill`, `selectOption`, `check`, `getByRole('button', …)` — assert kết quả hiển thị / URL; ưu tiên `getByRole` / label.
+
+## Tài liệu test trong `tasks/task-NNN-*/`
+
+- Quy ước **đặt tên file tiếng Anh** (chung cả repo): xem **`quiz-delivery-and-docs.mdc`** → mục *Đặt tên file*.
+- Mỗi task có **một** file báo cáo / kịch bản E2E chính trong folder task — quy ước tên: **`e2e-test-report.md`** (ví dụ `tasks/task-002-crossword-basic-spec/e2e-test-report.md`). Task khác có thể thêm suffix nếu cần, ví dụ `e2e-test-report-task-003.md`.
+- Trong `e2e-test-report.md` (hoặc tên tương đương) giữ **hai lớp** (như task 002):
+  1. **Nghiệp vụ / mã kịch bản** (bảng: mã E-, kỳ vọng, trạng thái Pass).
+  2. **Chuỗi thao tác UI** — bảng hoặc mục riêng: route + các bước bấm/nhập tương ứng code Playwright (để QA và reviewer không chỉ đọc phần nghiệp vụ).
+- **Fix bug:** trong `fix-bug.md` ghi triệu chứng + nguyên nhân + cách sửa; trong **`e2e-test-report.md`** (cùng task) phải có hàng ánh xạ tới **auto test**: mã kịch bản (vd. **E3-FIX-01**), file `e2e/*.spec.ts`, và bảng **§1.2** / **§1.3** (chuỗi UI) khi thêm bước assert. Cập nhật bảng trạng thái §4. Nếu task chưa có `fix-bug.md`, có thể ghi block bug ngắn cuối `e2e-test-report.md`.
+
+## Sau khi thêm / sửa E2E
+
+- Chạy `npm run verify` (đã có trong `quiz-delivery-and-docs.mdc`).
+- Nếu thêm seed: cập nhật `e2e/constants.ts` + `global-setup` + một dòng trong README task hoặc `e2e-test-report.md` về `shareLink` mới.
+
+## Tham chiếu trong repo
+
+- Mẫu hoàn chỉnh: `tasks/task-002-crossword-basic-spec/e2e-test-report.md`, `e2e/task-002-*.spec.ts`, `e2e/constants.ts`, `e2e/global-setup.ts`.
+- Advanced (task 003): `e2e/task-003-*.spec.ts`, `tasks/task-003-crossword-advanced-spec/e2e-test-report.md`.

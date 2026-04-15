@@ -4,8 +4,9 @@ import { useMemo } from "react";
 import {
   assignLetterIndexesForBasic,
   alignmentColumnZeroBased,
+  visibleLetterIndexZeroBased,
 } from "@/modules/quiz/validation/crossword-basic";
-import { normalizeKeyword } from "@/modules/quiz/lib/text";
+import { normalizeKeyword, answerLettersStripSpaces } from "@/modules/quiz/lib/text";
 
 /** Khoảng một ô (w-8) + gap-1 — dùng căn cột từ khóa */
 const ALIGN_UNIT_REM = 2.25;
@@ -80,26 +81,34 @@ export default function CrosswordPreview({
 
       <div className="space-y-6">
         {rows.map((question, index) => {
-          const letterPosition = question.letterIndex - 1;
-          const answer = question.answer.toUpperCase();
-          const col = letterPosition;
-          const marginLeftRem = (maxCol - col) * ALIGN_UNIT_REM;
+          const answer = question.answer;
+          const lettersRow = answerLettersStripSpaces(answer).toUpperCase();
+          const letterVisibleCol = visibleLetterIndexZeroBased(
+            answer,
+            question.letterIndex
+          );
+          const marginLeftRem = (maxCol - letterVisibleCol) * ALIGN_UNIT_REM;
 
           return (
             <div key={index} className="relative">
-              <div className="font-medium mb-2">
-                Câu {index + 1}: {question.question}
+              <div className="font-medium mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span>
+                  Câu {index + 1}: {question.question}
+                </span>
+                <span className="text-sm font-normal text-gray-500 tabular-nums">
+                  ({answerLettersStripSpaces(answer).length} chữ)
+                </span>
               </div>
               <div
                 className="flex items-center gap-1"
                 style={{ marginLeft: `${marginLeftRem}rem` }}
               >
-                {answer.split("").map((letter, i) => (
+                {[...lettersRow].map((letter, i) => (
                   <div
                     key={i}
                     className={`w-8 h-8 border-2 flex items-center justify-center font-medium shrink-0
                       ${
-                        i === letterPosition
+                        i === letterVisibleCol
                           ? "border-indigo-500 bg-indigo-50 text-indigo-600"
                           : "border-gray-300"
                       }`}

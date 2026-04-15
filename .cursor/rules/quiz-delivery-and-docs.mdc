@@ -1,5 +1,5 @@
 ---
-description: Hoàn thành task — verify (lint+build), test khi có; spec + tiến độ feature
+description: Hoàn thành task — verify (lint+build), test khi có; spec + tiến độ; tên file tiếng Anh (quy ước chung)
 alwaysApply: true
 ---
 
@@ -38,6 +38,8 @@ alwaysApply: true
 
 8. Khi thay đổi hành vi có thể hồi quy: ưu tiên **thêm hoặc sửa test** cùng code (khi đã có framework test).
 
+9. **E2E Playwright + tài liệu theo task** (task mới **và** fix bug có rủi ro hồi quy): làm theo rule **`quiz-e2e-and-test-docs.mdc`** — file `e2e/task-NNN-*.spec.ts`, cập nhật **`e2e-test-report.md`** (hoặc `fix-bug.md`) trong `tasks/task-NNN-*/`, hai lớp mô tả (nghiệp vụ + chuỗi thao tác UI).
+
 ## Feature mới — spec & tiến độ
 
 - **Một feature → một file spec** dưới `docs/specs/`, đặt tên: `NNN-short-slug.md` (số thứ tự tùy chọn + slug ngắn), hoặc bám ID task/issue nếu team đã quy ước.
@@ -47,7 +49,15 @@ alwaysApply: true
   - Checklist **task / tiến độ** (đánh dấu khi xong; cập nhật khi phạm vi đổi).
   - Mục **Verify đã chạy**: ghi ngày + lệnh + kết quả (sau mỗi lần merge ý lớn hoặc trước khi coi feature done).
 
+## Đặt tên file (tiếng Anh — quy ước chung)
+
+- **Tên file và thư mục mới** trong repo `quizzes` dùng **tiếng Anh** (ASCII, **`kebab-case.md`** cho tài liệu / playbook / báo cáo; **`kebab-case.ts`** hoặc theo convention hiện có cho code: `PascalCase.tsx` component, `camelCase.ts` util).
+- **Nội dung** bên trong file vẫn có thể tiếng Việt (hoặc song ngữ) nếu team cần; chỉ **tên trên disk** giữ English cho nhất quán, dễ tìm trong IDE/Git, và tránh encoding/path kỳ lạ.
+- **Phạm vi:** `tasks/**`, `e2e/**`, `docs/**`, script dưới `scripts/`, file cấu hình đặt tùy ý (ưu tiên English). **Không** đổi hàng loạt tên file legacy đã merge trừ khi user yêu cầu refactor tên.
+- **Task folder** vẫn bám `tasks/task-NNN-short-english-slug/` (xem `tasks/README.md`).
+
 ## Liên kết với rule khác
 
 - Cấu trúc code & refactor: `quiz-code-structure.mdc`; mỗi việc một folder `tasks/task-NNN-slug/` (xem `tasks/README.md`).
 - Kiến trúc sản phẩm: `quiz-product-architecture.mdc`.
+- E2E + `e2e-test-report.md` theo task: `quiz-e2e-and-test-docs.mdc`.

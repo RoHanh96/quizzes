@@ -8,6 +8,10 @@ import {
   validateBasicDraftMessage,
   getBasicAnswerErrorsByPosition,
 } from "@/modules/quiz/validation/crossword-basic"
+import {
+  ADVANCED_IMAGE_MIN_BYTES,
+  advancedImageTooSmallMessage,
+} from "@/modules/quiz/validation/crossword-advanced"
 
 interface Question {
   question: string
@@ -144,6 +148,14 @@ export default function QuizForm({ initialData }: QuizFormProps) {
 
       // Nếu có file hình ảnh, upload lên server trước
       if (formData.imageFile) {
+        if (
+          formData.type === "crossword_advanced" &&
+          formData.imageFile.size < ADVANCED_IMAGE_MIN_BYTES
+        ) {
+          setError(advancedImageTooSmallMessage())
+          setIsSubmitting(false)
+          return
+        }
         const formDataUpload = new FormData()
         formDataUpload.append("file", formData.imageFile)
 

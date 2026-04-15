@@ -43,6 +43,9 @@ export async function PUT(
       if (!norm.ok) {
         return NextResponse.json({ message: norm.message }, { status: 400 });
       }
+      if (type === "crossword_advanced") {
+        updateData.advancedLayoutSeed = Math.floor(Math.random() * 0x7fffffff);
+      }
       updateData.crosswordQuestions = {
         create: norm.questions.map((q) => ({
           question: q.question,

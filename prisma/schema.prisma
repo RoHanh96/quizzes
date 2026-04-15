@@ -67,6 +67,7 @@ model Quiz {
   verticalWord     String?            // For crossword_basic
   secretWord       String?            // For crossword_advanced secret word
   imageUrl         String?            // For crossword_advanced
+  advancedLayoutSeed Int?             // Seeded shuffle for R×C grid labels (task-003)
   shareLink        String?            @unique
   crosswordQuestions CrosswordQuestion[]
   multipleChoiceQuestions MultipleChoiceQuestion[]

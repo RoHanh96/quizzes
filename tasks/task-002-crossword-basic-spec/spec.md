@@ -2,6 +2,8 @@
 
 > Trạng thái: **spec + code §3.2–§3.4, §3.3.6 (2026-04)** — màn chơi basic đã có dải ô từ khóa, đoán từ khóa + modal, khóa/spectator + API poll; **e2e Playwright tối thiểu** (`npm run e2e`, gồm trong `npm run verify`); checklist tay A4–A6 vẫn mở.
 
+**Bug / fix (task 002):** ghi tập trung trong **[fix-bug.md](./fix-bug.md)** (không rải rác nhiều file).
+
 ---
 
 ## 1. Chuẩn hóa văn bản
@@ -11,6 +13,7 @@
 | Từ khóa | **Không bắt buộc dấu**; chuẩn hóa: bỏ dấu (NFD + bỏ ký tự kết hợp), **bỏ mọi khoảng trắng**, so khớp **không phân biệt hoa thường** (thống nhất in hoa khi so). |
 | Đếm `N` | `N` = độ dài chuỗi từ khóa **sau** chuẩn hóa (ví dụ `"Viet nam"` → 7 ký tự). |
 | Đáp án (admin / chơi) | Cùng quy tắc bỏ dấu + bỏ space khi **validate** và khi **so đúng/sai** cả câu. |
+| Ô hàng ngang + gợi ý độ dài | Số ô và gợi ý **“N chữ”** = chỉ ký tự **không** tính khoảng trắng trong chuỗi đáp án lưu DB — đồng bộ với cách so khớp (space không tạo thêm ô). |
 | Ngôn ngữ | Phù hợp **tiếng Anh** và text không dấu. |
 
 ---
@@ -29,11 +32,11 @@
 
 ### 3.1 Hàng ngang (từng câu)
 
-1. Mỗi câu: hiển thị **một hàng ô** — số ô = **số ký tự của đáp án** (theo chuỗi đáp án lưu DB; hiển thị có thể uppercase).
+1. Mỗi câu: hiển thị **một hàng ô** — số ô = **số ký tự không phải khoảng trắng** trong chuỗi đáp án lưu DB (khoảng trắng **không** tạo ô riêng). Hiển thị chữ trong ô có thể in hoa.
 2. Ban đầu: ô **trống / trong suốt** (chưa lộ chữ).
-3. **Click** câu → hiện **nội dung câu hỏi** + ô nhập đáp án.
-4. **Đúng** → điền **toàn bộ** ký tự đáp án vào các ô.
-5. **Cột dọc từ khóa** (trong các hàng ngang): các ô chứa ký tự “thuộc từ khóa” (theo `letterIndex` đã gán) phải **thẳng một cột** trên màn hình — dùng **margin / prefix không tính vào số ô đáp án** (chỉ số ô = độ dài đáp án; căn lề để cột thẳng hàng).
+3. **Click** câu → hiện **nội dung câu hỏi**, bên cạnh (cùng khối) hiển thị gợi ý **(N chữ)** với `N` = cùng định nghĩa mục 1 (không tính space), **và** ô nhập đáp án.
+4. **Đúng** → điền **toàn bộ** ký tự đáp án vào các ô (**chỉ** các ký tự không space; thứ tự giữ nguyên như trong chuỗi gốc sau khi bỏ space).
+5. **Cột dọc từ khóa** (trong các hàng ngang): các ô chứa ký tự “thuộc từ khóa” (theo `letterIndex` đã gán — vị trí trên chuỗi đáp án gốc, không trỏ vào space) phải **thẳng một cột** trên màn hình — dùng **margin / prefix** trên lưới ô **chỉ gồm ký tự không space**; căn lề để cột thẳng hàng.
 
 ### 3.2 Dải từ khóa **trên đầu** màn hình
 

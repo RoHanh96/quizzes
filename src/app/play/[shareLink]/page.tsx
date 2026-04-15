@@ -17,7 +17,7 @@ export default async function PublicPlayPage({
   }
 
   const keywordGloballySolved =
-    quiz.type === "crossword_basic"
+    quiz.type === "crossword_basic" || quiz.type === "crossword_advanced"
       ? await isKeywordGloballySolved(params.shareLink)
       : false;
 
