@@ -1,0 +1,36 @@
+---
+description: Prisma, API routes, validation và type-safety cho quiz
+globs: prisma/**,src/app/api/**,src/lib/**
+alwaysApply: false
+---
+
+# Dữ liệu & API
+
+## Prisma
+
+- Đổi `schema.prisma` → **luôn** `migrate` (hoặc flow tương đương) + `generate`; cập nhật đồng thời chỗ đọc/ghi (API, server helpers, form).
+- `Quiz.type` là **chuỗi có tập hợp cố định**; trong TS dùng union / const enum thống nhất với `src/types` (tránh magic string rải rác).
+
+## Validation theo type
+
+- **POST/PUT** (và server actions nếu có) phải **branch theo `type`**:
+  - `crossword_*`: bắt buộc field đúng spec (basic: `verticalWord` + đúng `N` câu theo từ khóa đã chuẩn hóa; **`letterIndex` do server gán**, client không tin).
+  - `multiple_choice`: đúng **15** câu, mỗi câu **4** option, **một** đáp án đúng; `order` hoặc `difficulty` phản ánh thứ tự khó tăng dần.
+- Không tin tưởng body từ client; từ chối rõ (400 + message) khi sai cấu trúc.
+
+## Public play vs admin
+
+- API **public** (play qua link): chỉ trả dữ liệu **tối thiểu** để render (không trả đáp án trắc nghiệm dạng plain nếu spec yêu cầu chống gian lận — chốt theo từng task).
+- API **admin**: kiểm tra session + `isAdmin` (hoặc quyền tương đương) nhất quán.
+
+## Mở rộng type mới
+
+1. Cập nhật schema / quan hệ nếu cần.  
+2. Validate trong API.  
+3. Form admin + component play.  
+4. Cập nhật union type TS + (nếu có) seed.
+
+## Tránh
+
+- Thêm field “chung chung” kiểu JSON lớn không version khi có thể tách bảng con rõ ràng cho từng type.
+- API quiz chỉ qua **`/api/quizzes`** (collection + `[quizId]`); không còn `/api/games`.

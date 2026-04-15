@@ -1,0 +1,35 @@
+---
+description: Kiến trúc sản phẩm — Quiz-centric, admin vs user, các loại quiz
+alwaysApply: true
+---
+
+# Quiz system — kiến trúc đã chốt
+
+## Đơn vị nội dung
+
+- **`Quiz` là đơn vị gốc**: một bài = một `type` cố định, một **link công khai** (`shareLink` / slug) để user chơi.
+- User **không cần đăng nhập** khi chơi qua link. Admin **bắt buộc auth** để tạo/sửa/xóa.
+- **SQLite** dùng cho dev/test; khi lên production chuyển **Postgres** (migration Prisma), không coi SQLite là ràng buộc lâu dài.
+
+## Loại quiz (mở rộng sau)
+
+| Type | Mô tả ngắn |
+|------|------------|
+| `crossword_basic` | Từ khóa chuẩn hóa (bỏ dấu, bỏ space); đúng `N` câu; mỗi đáp án chứa ký tự slot tương ứng; `letterIndex` gán server (lần xuất hiện đầu trong đáp án, bỏ qua space). |
+| `crossword_advanced` | Giống basic + hình ảnh liên quan từ khóa tổng, lật mở theo tiến độ (spec rõ trong task). |
+| `multiple_choice` | **15 câu**, mỗi câu **4 phương án**, độ khó **tăng dần** theo thứ tự (order 1–15). |
+
+Loại mới sau này: thêm như **plugin** — cùng pattern (metadata DB + validate server + form admin + màn chơi).
+
+## Route & UX
+
+- Ưu tiên **một URL play ổn định** theo `shareLink` (ví dụ `/play/[shareLink]` hoặc `/q/[slug]`). Tránh phụ thuộc user biết nội bộ `quizId` nếu không cần.
+- Admin: wizard / form **theo từng `type`** (field khác nhau); có **preview** gần giống user khi khả thi.
+
+## Legacy
+
+- **`Game`** đã gỡ khỏi schema và UI. Mọi tính năng mới trên **Quiz + `shareLink`**.
+
+## Ngôn ngữ code
+
+- Rule này bằng tiếng Việt cho ngữ cảnh sản phẩm; **code, comment trong repo** có thể tiếng Anh hoặc Việt nhất quán theo file hiện có.

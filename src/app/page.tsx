@@ -51,13 +51,21 @@ export default async function Home() {
                 {quiz.crosswordQuestions.length} Câu hỏi
               </p>
               <div className="flex justify-between items-center">
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Link
                     href={`/quizzes/${quiz.id}`}
                     className="text-indigo-600 hover:text-indigo-800"
                   >
-                    Chơi Quiz
+                    Chơi (admin)
                   </Link>
+                  {quiz.shareLink && (
+                    <Link
+                      href={`/play/${quiz.shareLink}`}
+                      className="text-green-700 hover:text-green-900"
+                    >
+                      Link public
+                    </Link>
+                  )}
                   <Link
                     href={`/quizzes/${quiz.id}/edit`}
                     className="text-gray-600 hover:text-gray-800"

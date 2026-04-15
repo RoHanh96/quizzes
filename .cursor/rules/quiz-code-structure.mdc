@@ -1,0 +1,38 @@
+---
+description: Cấu trúc thư mục & module quiz — mở rộng type, tránh trùng legacy
+globs: src/**
+alwaysApply: false
+---
+
+# Cấu trúc code (mục tiêu; áp dụng dần khi sửa/tạo file)
+
+Tham chiếu chi tiết refactor: `tasks/task-001-quiz-refactor/refactor-plan.md` — mọi task: `tasks/README.md`.
+
+## Nguyên tắc
+
+- **`app/` mỏng**: page chỉ compose (fetch gọn + render). Logic nghiệp vụ / validate / map DTO đặt ngoài `route.ts`/`page.tsx` khi đoạn code bắt đầu dài hoặc lặp.
+- **Module theo domain**: code quiz tập trung dưới `src/modules/quiz/` (hoặc tên tương đương khi đã tạo folder):
+  - `types.ts` — `QuizType`, hằng số
+  - `validation/` — một file (hoặc một hàm export) **mỗi type**
+  - `server/` — query/mutation dùng Prisma (ví dụ `getForPlay`, `getForAdmin`)
+  - `components/editor/`, `components/player/` — UI theo type hoặc shared
+  - `registry.ts` — map `type` → editor + player + validator (khi đã có registry)
+- **Một loại quiz mới**: thêm validator + (editor + player) + đăng ký registry + cập nhật union TS; **không** copy toàn bộ route sang file mới mà không tái sử dụng module.
+
+## Tránh
+
+- **Không tạo lại** nhánh `components/games` hoặc API `/api/games`. Crossword: chỉnh trong **`modules/quiz/components`**.
+- Feature mới: **`/api/quizzes`** + module `server/` / `validation/`.
+
+## `lib/`
+
+- Giữ **một** entry Prisma (ví dụ `lib/prisma.ts`). Tránh thêm client DB thứ hai trừ khi có lý do rõ (cache, read replica — chưa cần ở giai đoạn này).
+
+## Import
+
+- Import feature quiz từ `modules/quiz/...` thay vì đường dài qua nhiều `../../` khi đã có alias `@/` — ví dụ `@/modules/quiz/validation/multiple-choice`.
+
+## Tailwind & UI
+
+- Mọi `className` dưới `src/` (kể cả `src/modules/**`) phải nằm trong **`tailwind.config.js` → `content`**. Repo dùng glob `./src/**/*.{js,ts,jsx,tsx,mdx}` — **không xóa / không thu hẹp** mà quên `modules/`.
+- Sau đổi UI liên quan admin: bám **Definition of Done** trong `quiz-delivery-and-docs.mdc` (`npm run verify` + smoke `/quizzes`).

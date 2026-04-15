@@ -4,9 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:fresh": "rm -rf .next && next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint .",
+    "check:admin-ui-css": "node scripts/check-admin-ui-css.cjs",
+    "e2e": "playwright test",
+    "e2e:install": "playwright install chromium",
+    "verify": "npm run lint && npm run build && npm run check:admin-ui-css && npm run e2e"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
@@ -36,6 +41,7 @@
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5"
+    "typescript": "^5",
+    "@playwright/test": "^1.49.0"
   }
 }
