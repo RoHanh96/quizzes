@@ -48,3 +48,7 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# DB Playwright (tách khỏi dev.db — không commit)
+/prisma/e2e.db
+/prisma/e2e.db-journal

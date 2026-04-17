@@ -17,7 +17,7 @@ alwaysApply: true
 |------|------------|
 | `crossword_basic` | Từ khóa chuẩn hóa (bỏ dấu, bỏ space); đúng `N` câu; mỗi đáp án chứa ký tự slot tương ứng; `letterIndex` gán server (lần xuất hiện đầu trong đáp án, bỏ qua space). |
 | `crossword_advanced` | Giống basic + hình ảnh liên quan từ khóa tổng, lật mở theo tiến độ (spec rõ trong task). |
-| `multiple_choice` | **15 câu**, mỗi câu **4 phương án**, độ khó **tăng dần** theo thứ tự (order 1–15). |
+| `multiple_choice` | **Ngân hàng** câu (mỗi câu **4 phương án**, một đúng, độ khó `easy`…`extreme`), **`playLength`** ≤ số câu; phiên chơi random theo bucket + co tỉ lệ (spec **task-004**). Màn `/play/[shareLink]` + API session không lộ đáp án trước POST chấm. |
 
 Loại mới sau này: thêm như **plugin** — cùng pattern (metadata DB + validate server + form admin + màn chơi).
 

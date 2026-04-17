@@ -28,6 +28,9 @@ export default async function EditQuizPage({
       crosswordQuestions: {
         orderBy: { order: "asc" },
       },
+      multipleChoiceQuestions: {
+        orderBy: { order: "asc" },
+      },
     },
   });
 
@@ -63,7 +66,21 @@ export default async function EditQuizPage({
           }}
         />
       ) : (
-        <QuizForm initialData={quiz} />
+        <QuizForm
+          initialData={{
+            id: quiz.id,
+            title: quiz.title,
+            type: quiz.type,
+            playLength: quiz.playLength ?? 1,
+            questions: quiz.multipleChoiceQuestions.map((q) => ({
+              question: q.question,
+              options: JSON.parse(q.options) as string[],
+              correctOption: q.answer,
+              difficulty: q.difficulty,
+              order: q.order,
+            })),
+          }}
+        />
       )}
     </div>
   );

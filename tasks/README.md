@@ -27,5 +27,6 @@ Mỗi lần **fix bug**, **sửa spec**, hoặc **thêm chức năng** có tài 
 | [task-002-crossword-basic-spec](./task-002-crossword-basic-spec/) | Spec & checklist triển khai crossword basic. |
 | [e2e-full-app-playbook](./e2e-full-app-playbook/) | Kịch bản E2E toàn màn (review trước khi code test). |
 | [task-003-crossword-advanced-spec](./task-003-crossword-advanced-spec/) | Crossword advanced — một ảnh, lưới R×C, mở mảnh theo câu đúng; public/modal như basic. |
+| [task-004-multiple-choice-spec](./task-004-multiple-choice-spec/) | Multiple choice — MVP code + spec v1; E2E `task-004-mc-*.spec.ts`. |
 
 Task mới: copy cấu trúc từ một folder trên hoặc tạo `task-003-...` rồi thêm một dòng vào bảng này **và** cập nhật [STATUS.md](./STATUS.md).

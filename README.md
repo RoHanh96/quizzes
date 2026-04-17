@@ -6,11 +6,16 @@
 
 ```bash
 npm install
-cp .env.example .env.local   # hoặc tạo .env.local với NEXTAUTH_URL, NEXTAUTH_SECRET
+cp .env.example .env.local   # gồm NEXTAUTH_*, DATABASE_URL (SQLite dev)
+# Hoặc: export DATABASE_URL="file:./dev.db" rồi chạy Prisma CLI (đường dẫn tương đối theo thư mục prisma/)
 npx prisma migrate deploy
 npx prisma db seed
 npm run dev
 ```
+
+**Hai file SQLite:** `npm run dev` / `build` / `start` dùng `DATABASE_URL=file:./dev.db` (mặc định trong `package.json`). **`npm run e2e` / `verify`** dùng `file:./e2e.db` — Playwright seed/xóa theo `shareLink` test **không** ghi đè dữ liệu trong `prisma/dev.db`.
+
+**Danh sách admin (`/`, `/quizzes`):** ẩn quiz seed E2E (user `e2e-seed@example.com` hoặc `shareLink` bắt đầu `e2e-share-`). Server test Playwright bật `SHOW_E2E_SEED_IN_DASHBOARD_LIST=1` (trong `playwright.config.ts`) để spec vẫn tìm được thẻ “E2E …”.
 
 Mở [http://localhost:3000](http://localhost:3000). Admin mặc định: `admin@example.com` (mật khẩu tùy ý theo cấu hình dev trong `authorize`).
 

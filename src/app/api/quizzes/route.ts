@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { parseQuizCreateBody } from "@/modules/quiz/validation/quiz-create-body";
-import { normalizeCrosswordQuestions } from "@/modules/quiz/validation/crossword-questions";
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -23,6 +22,33 @@ export async function POST(request: Request) {
 
     const { data } = parsed;
     const shareLink = nanoid();
+
+    if (data.type === "multiple_choice") {
+      const norm = data.normalizedMcQuestions!;
+      const quiz = await prisma.quiz.create({
+        data: {
+          title: data.title,
+          type: data.type,
+          shareLink,
+          playLength: data.playLength!,
+          creatorId: session.user.id,
+          multipleChoiceQuestions: {
+            create: norm.map((q) => ({
+              question: q.question,
+              options: JSON.stringify(q.options),
+              answer: q.answer,
+              difficulty: q.difficulty,
+              order: q.order,
+            })),
+          },
+        },
+        include: {
+          multipleChoiceQuestions: true,
+          crosswordQuestions: true,
+        },
+      });
+      return NextResponse.json(quiz);
+    }
 
     if (data.type === "crossword_basic" || data.type === "crossword_advanced") {
       const norm = data.normalizedCrosswordQuestions!;
@@ -57,19 +83,10 @@ export async function POST(request: Request) {
       return NextResponse.json(quiz);
     }
 
-    const quiz = await prisma.quiz.create({
-      data: {
-        title: data.title,
-        type: data.type,
-        shareLink,
-        creatorId: session.user.id,
-      },
-      include: {
-        crosswordQuestions: true,
-      },
-    });
-
-    return NextResponse.json(quiz);
+    return NextResponse.json(
+      { message: "Loại quiz không được hỗ trợ." },
+      { status: 400 }
+    );
   } catch (error) {
     console.error("[QUIZ_CREATE]", error);
     return new NextResponse("Internal Error", { status: 500 });
@@ -85,43 +102,53 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, title, type, verticalWord, secretWord, imageUrl, questions } = body;
-
-    if (!id || !title || !type) {
-      return new NextResponse("Missing required fields", { status: 400 });
+    const id = typeof (body as { id?: unknown }).id === "string" ? (body as { id: string }).id : "";
+    if (!id) {
+      return new NextResponse("Missing quiz id", { status: 400 });
     }
 
-    await prisma.crosswordQuestion.deleteMany({
-      where: { quizId: id },
-    });
+    const parsed = parseQuizCreateBody(body);
+    if (!parsed.ok) {
+      return NextResponse.json({ message: parsed.message }, { status: 400 });
+    }
+
+    const d = parsed.data;
+
+    await prisma.crosswordQuestion.deleteMany({ where: { quizId: id } });
+    await prisma.multipleChoiceQuestion.deleteMany({ where: { quizId: id } });
 
     const updateData: Prisma.QuizUpdateInput = {
-      title,
-      type,
-      verticalWord: verticalWord ?? null,
-      secretWord: secretWord ?? null,
-      imageUrl: imageUrl ?? null,
+      title: d.title,
+      type: d.type,
+      verticalWord: d.verticalWord ?? null,
+      secretWord: d.secretWord ?? null,
+      imageUrl: d.imageUrl ?? null,
+      playLength: d.type === "multiple_choice" ? d.playLength! : null,
     };
 
-    if (type === "crossword_basic" || type === "crossword_advanced") {
-      const norm = normalizeCrosswordQuestions(
-        questions,
-        type,
-        type === "crossword_basic" ? verticalWord : null
-      );
-      if (!norm.ok) {
-        return NextResponse.json({ message: norm.message }, { status: 400 });
-      }
-      if (type === "crossword_advanced") {
+    if (d.type === "crossword_basic" || d.type === "crossword_advanced") {
+      const norm = d.normalizedCrosswordQuestions!;
+      if (d.type === "crossword_advanced") {
         updateData.advancedLayoutSeed = Math.floor(Math.random() * 0x7fffffff);
       }
       updateData.crosswordQuestions = {
-        create: norm.questions.map((q) => ({
+        create: norm.map((q) => ({
           question: q.question,
           answer: q.answer,
           order: q.order,
           position: q.position,
           letterIndex: q.letterIndex,
+        })),
+      };
+    } else if (d.type === "multiple_choice") {
+      const norm = d.normalizedMcQuestions!;
+      updateData.multipleChoiceQuestions = {
+        create: norm.map((q) => ({
+          question: q.question,
+          options: JSON.stringify(q.options),
+          answer: q.answer,
+          difficulty: q.difficulty,
+          order: q.order,
         })),
       };
     }
@@ -131,6 +158,7 @@ export async function PUT(request: Request) {
       data: updateData,
       include: {
         crosswordQuestions: true,
+        multipleChoiceQuestions: true,
       },
     });
 

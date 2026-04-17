@@ -4,6 +4,7 @@ import {
   isKeywordGloballySolved,
 } from "@/modules/quiz/server/queries";
 import CrosswordPlayer from "@/modules/quiz/components/player/CrosswordPlayer";
+import MultipleChoicePlayer from "@/modules/quiz/components/player/MultipleChoicePlayer";
 import { quizTypeSupportsCrosswordPlayer } from "@/modules/quiz/registry";
 
 export default async function PublicPlayPage({
@@ -29,6 +30,14 @@ export default async function PublicPlayPage({
           playShareLink={params.shareLink}
           keywordGloballySolved={keywordGloballySolved}
         />
+      </div>
+    );
+  }
+
+  if (quiz.type === "multiple_choice") {
+    return (
+      <div className="container mx-auto py-8 px-4 max-w-2xl">
+        <MultipleChoicePlayer shareLink={params.shareLink} title={quiz.title} />
       </div>
     );
   }

@@ -18,3 +18,38 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* Multiple choice — nhấp nháy làm nổi bật đáp án đúng (player) */
+@keyframes mc-blink-green-amber {
+  0%,
+  100% {
+    background-color: rgb(209 250 229);
+    border-color: rgb(52 211 153);
+    box-shadow: 0 0 0 2px rgb(251 191 36 / 0.45);
+  }
+  50% {
+    background-color: rgb(254 243 199);
+    border-color: rgb(245 158 11);
+    box-shadow: 0 0 0 2px rgb(16 185 129 / 0.35);
+  }
+}
+
+@keyframes mc-blink-green {
+  0%,
+  100% {
+    background-color: rgb(209 250 229);
+    border-color: rgb(16 185 129);
+  }
+  50% {
+    background-color: rgb(167 243 208);
+    border-color: rgb(5 150 105);
+  }
+}
+
+.mc-blink-green-amber {
+  animation: mc-blink-green-amber 0.55s ease-in-out infinite;
+}
+
+.mc-blink-green {
+  animation: mc-blink-green 0.5s ease-in-out infinite;
+}

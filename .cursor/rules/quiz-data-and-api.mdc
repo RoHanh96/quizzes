@@ -8,6 +8,7 @@ alwaysApply: false
 
 ## Prisma
 
+- `datasource` dùng `env("DATABASE_URL")`: dev mặc định `file:./dev.db`, E2E `file:./e2e.db` (xem `package.json`, README). **Không** `migrate reset` trừ khi user yêu cầu; migration tránh `DELETE`/`DROP` hàng loạt dữ liệu user — chi tiết rule **`quiz-delivery-and-docs.mdc`** (mục dữ liệu local).
 - Đổi `schema.prisma` → **luôn** `migrate` (hoặc flow tương đương) + `generate`; cập nhật đồng thời chỗ đọc/ghi (API, server helpers, form).
 - `Quiz.type` là **chuỗi có tập hợp cố định**; trong TS dùng union / const enum thống nhất với `src/types` (tránh magic string rải rác).
 
@@ -15,7 +16,7 @@ alwaysApply: false
 
 - **POST/PUT** (và server actions nếu có) phải **branch theo `type`**:
   - `crossword_*`: bắt buộc field đúng spec (basic: `verticalWord` + đúng `N` câu theo từ khóa đã chuẩn hóa; **`letterIndex` do server gán**, client không tin).
-  - `multiple_choice`: đúng **15** câu, mỗi câu **4** option, **một** đáp án đúng; `order` hoặc `difficulty` phản ánh thứ tự khó tăng dần.
+  - `multiple_choice`: **≥1** câu trong ngân hàng, mỗi câu **4** option, **một** đáp án đúng (index 0–3), `difficulty` + `order`; **`playLength`** nguyên dương và ≤ số câu (`normalizeMultipleChoiceQuestions`). Public: `GET/POST /api/play/[shareLink]/multiple-choice-session` — GET không trả index đúng.
 - Không tin tưởng body từ client; từ chối rõ (400 + message) khi sai cấu trúc.
 
 ## Public play vs admin
