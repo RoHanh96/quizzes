@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { normalizeCrosswordQuestions } from "@/modules/quiz/validation/crossword-questions";
+import { parseQuizCreateBody } from "@/modules/quiz/validation/quiz-create-body";
 
 export async function PUT(
   request: Request,
@@ -17,42 +17,52 @@ export async function PUT(
 
   try {
     const body = await request.json();
-    const { title, type, verticalWord, secretWord, imageUrl, questions } = body;
+    const parsed = parseQuizCreateBody(body);
+    if (!parsed.ok) {
+      return NextResponse.json({ message: parsed.message }, { status: 400 });
+    }
+
+    const d = parsed.data;
 
     await prisma.crosswordQuestion.deleteMany({
       where: { quizId: params.quizId },
     });
+    await prisma.multipleChoiceQuestion.deleteMany({
+      where: { quizId: params.quizId },
+    });
 
     const updateData: Prisma.QuizUpdateInput = {
-      title,
-      type,
-      verticalWord: verticalWord ?? null,
-      secretWord: secretWord ?? null,
-      imageUrl: imageUrl ?? null,
+      title: d.title,
+      type: d.type,
+      verticalWord: d.verticalWord ?? null,
+      secretWord: d.secretWord ?? null,
+      imageUrl: d.imageUrl ?? null,
+      playLength: d.type === "multiple_choice" ? d.playLength! : null,
     };
 
-    if (
-      type === "crossword_basic" ||
-      type === "crossword_advanced"
-    ) {
-      const norm = normalizeCrosswordQuestions(
-        questions,
-        type,
-        type === "crossword_basic" ? verticalWord : null
-      );
-      if (!norm.ok) {
-        return NextResponse.json({ message: norm.message }, { status: 400 });
-      }
-      if (type === "crossword_advanced") {
+    if (d.type === "crossword_basic" || d.type === "crossword_advanced") {
+      const norm = d.normalizedCrosswordQuestions!;
+      if (d.type === "crossword_advanced") {
         updateData.advancedLayoutSeed = Math.floor(Math.random() * 0x7fffffff);
       }
       updateData.crosswordQuestions = {
-        create: norm.questions.map((q) => ({
+        create: norm.map((q) => ({
           question: q.question,
           answer: q.answer,
           order: q.order,
           position: q.position,
           letterIndex: q.letterIndex,
+        })),
+      };
+    } else if (d.type === "multiple_choice") {
+      const norm = d.normalizedMcQuestions!;
+      updateData.multipleChoiceQuestions = {
+        create: norm.map((q) => ({
+          question: q.question,
+          options: JSON.stringify(q.options),
+          answer: q.answer,
+          difficulty: q.difficulty,
+          order: q.order,
         })),
       };
     }
@@ -62,6 +72,7 @@ export async function PUT(
       data: updateData,
       include: {
         crosswordQuestions: true,
+        multipleChoiceQuestions: true,
       },
     });
 

@@ -8,9 +8,10 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// DATABASE_URL: đường dẫn tương đối theo thư mục prisma/ — xem README và `.env.example`.
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
 }
 
 model Account {
@@ -68,6 +69,7 @@ model Quiz {
   secretWord       String?            // For crossword_advanced secret word
   imageUrl         String?            // For crossword_advanced
   advancedLayoutSeed Int?             // Seeded shuffle for R×C grid labels (task-003)
+  playLength         Int?              // multiple_choice: số câu mỗi phiên (task-004)
   shareLink        String?            @unique
   crosswordQuestions CrosswordQuestion[]
   multipleChoiceQuestions MultipleChoiceQuestion[]
@@ -102,8 +104,10 @@ model CrosswordQuestion {
 model MultipleChoiceQuestion {
   id          String   @id @default(cuid())
   question    String
-  options     String   // JSON array of options
-  answer      Int      // Index of correct answer
+  options     String   // JSON array of 4 options (canonical A–D order)
+  answer      Int      // Index 0..3 = slot đúng trong canonical options
+  difficulty  String   @default("easy") // easy | medium | hard | extreme (task-004)
+  order       Int      @default(0)
   quiz        Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
   quizId      String
   createdAt   DateTime @default(now())

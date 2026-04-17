@@ -3,6 +3,10 @@ import {
   normalizeCrosswordQuestions,
   type NormalizedCrosswordQuestion,
 } from "./crossword-questions";
+import {
+  normalizeMultipleChoiceQuestions,
+  type NormalizedMultipleChoiceQuestion,
+} from "./multiple-choice-questions";
 
 export type QuizCreateBody = {
   title: string;
@@ -11,7 +15,9 @@ export type QuizCreateBody = {
   secretWord?: string | null;
   imageUrl?: string | null;
   questions?: unknown;
+  playLength?: number | null;
   normalizedCrosswordQuestions?: NormalizedCrosswordQuestion[];
+  normalizedMcQuestions?: NormalizedMultipleChoiceQuestion[];
 };
 
 export function parseQuizCreateBody(
@@ -34,6 +40,8 @@ export function parseQuizCreateBody(
 
   const type = typeRaw;
 
+  const playLengthRaw = b.playLength;
+
   const data: QuizCreateBody = {
     title,
     type,
@@ -41,7 +49,28 @@ export function parseQuizCreateBody(
     secretWord: typeof b.secretWord === "string" ? b.secretWord : null,
     imageUrl: typeof b.imageUrl === "string" ? b.imageUrl : null,
     questions: b.questions,
+    playLength:
+      typeof playLengthRaw === "number"
+        ? playLengthRaw
+        : typeof playLengthRaw === "string"
+          ? parseInt(playLengthRaw, 10)
+          : null,
   };
+
+  if (type === "multiple_choice") {
+    const norm = normalizeMultipleChoiceQuestions(b.questions, playLengthRaw);
+    if (!norm.ok) {
+      return { ok: false, message: norm.message };
+    }
+    return {
+      ok: true,
+      data: {
+        ...data,
+        playLength: norm.playLength,
+        normalizedMcQuestions: norm.questions,
+      },
+    };
+  }
 
   if (type === "crossword_basic" || type === "crossword_advanced") {
     const norm = normalizeCrosswordQuestions(

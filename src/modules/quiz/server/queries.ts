@@ -1,9 +1,37 @@
 import { prisma } from "@/lib/prisma";
-import type { CrosswordQuestion, Quiz } from "@prisma/client";
+import { whereQuizExcludingE2eSeed } from "@/lib/e2e-seed";
+import type {
+  CrosswordQuestion,
+  MultipleChoiceQuestion,
+  Quiz,
+  User,
+} from "@prisma/client";
 
 export type QuizWithCrossword = Quiz & {
   crosswordQuestions: CrosswordQuestion[];
+  multipleChoiceQuestions?: MultipleChoiceQuestion[];
 };
+
+/** Danh sách quiz cho `QuizListView` — không gồm seed Playwright. */
+export type QuizForDashboardList = Quiz & {
+  crosswordQuestions: CrosswordQuestion[];
+  creator: User | null;
+};
+
+export async function listQuizzesForDashboard(): Promise<QuizForDashboardList[]> {
+  const showE2eSeed =
+    process.env.SHOW_E2E_SEED_IN_DASHBOARD_LIST === "1" ||
+    process.env.SHOW_E2E_SEED_IN_DASHBOARD_LIST === "true";
+
+  return prisma.quiz.findMany({
+    where: showE2eSeed ? undefined : whereQuizExcludingE2eSeed,
+    orderBy: { createdAt: "desc" },
+    include: {
+      crosswordQuestions: true,
+      creator: true,
+    },
+  });
+}
 
 export async function getQuizWithCrosswordById(
   quizId: string
@@ -25,6 +53,9 @@ export async function getQuizWithCrosswordByShareLink(
     where: { shareLink },
     include: {
       crosswordQuestions: {
+        orderBy: { order: "asc" },
+      },
+      multipleChoiceQuestions: {
         orderBy: { order: "asc" },
       },
     },

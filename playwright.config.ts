@@ -17,8 +17,15 @@ export default defineConfig({
     /** Dùng `next start` để tránh `.next` dev lệch vendor chunk (vd. sonner). Cần đã `npm run build` trước khi chạy `npm run e2e` đơn lẻ; `npm run verify` đã build trước e2e. */
     command: "npm run start",
     url: "http://127.0.0.1:3005",
-    env: { PORT: "3005" },
-    reuseExistingServer: !process.env.CI,
+    env: {
+      PORT: "3005",
+      /** Cùng DB với `e2e/global-setup.ts` — không ghi đè dữ liệu trong `prisma/dev.db`. */
+      DATABASE_URL: "file:./e2e.db",
+      /** Admin list hiện quiz seed để spec tìm thẻ E2E (`listQuizzesForDashboard`). */
+      SHOW_E2E_SEED_IN_DASHBOARD_LIST: "1",
+    },
+    /** Luôn tắt reuse: server cũ có thể còn trỏ `dev.db` / trạng thái session khác với `e2e.db` sau `globalSetup`. */
+    reuseExistingServer: false,
     timeout: 60_000,
     stdout: "pipe",
     stderr: "pipe",

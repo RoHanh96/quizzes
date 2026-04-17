@@ -32,3 +32,6 @@ export const E2E_SHARE_ADVANCED_WRONG = "e2e-share-advanced-wrong";
 
 /** Advanced — hai context spectator (A sai, B đúng từ khóa). */
 export const E2E_SHARE_ADVANCED_SPECTATOR = "e2e-share-advanced-spectator";
+
+/** Multiple choice — task-004 (`global-setup`). */
+export const E2E_SHARE_MC = "e2e-share-mc";

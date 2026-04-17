@@ -38,7 +38,22 @@ alwaysApply: true
 
 8. Khi thay đổi hành vi có thể hồi quy: ưu tiên **thêm hoặc sửa test** cùng code (khi đã có framework test).
 
-9. **E2E Playwright + tài liệu theo task** (task mới **và** fix bug có rủi ro hồi quy): làm theo rule **`quiz-e2e-and-test-docs.mdc`** — file `e2e/task-NNN-*.spec.ts`, cập nhật **`e2e-test-report.md`** (hoặc `fix-bug.md`) trong `tasks/task-NNN-*/`, hai lớp mô tả (nghiệp vụ + chuỗi thao tác UI).
+9. **E2E Playwright + tài liệu theo task** (task mới **và** fix bug có rủi ro hồi quy): làm theo rule **`quiz-e2e-and-test-docs.mdc`** — file `e2e/task-NNN-*.spec.ts`, cập nhật **`e2e-test-report.md`** trong `tasks/task-NNN-*/`; mỗi **sửa bug** còn bắt buộc **`fix-bug.md`** (mục **§10** dưới đây), hai lớp mô tả (nghiệp vụ + chuỗi thao tác UI).
+
+10. **Sửa bug — bắt buộc `fix-bug.md`:** mỗi lần **sửa bug** (hành vi sai so với spec, regression, hoặc chỉnh UX/hành vi đáng ghi nhận sau khi đã ship task) trong repo `quizzes`, **phải** thêm (hoặc cập nhật) mục trong **`tasks/task-NNN-*/fix-bug.md`** của task tương ứng — triệu chứng, nguyên nhân (nếu biết), cách sửa, **Đã test** (lệnh / kết quả). **Không** chỉ sửa code rồi bỏ qua file này. Đồng bộ **`e2e-test-report.md`** và test Playwright theo **`quiz-e2e-and-test-docs.mdc`** (ánh xạ bug ↔ mã kịch bản).
+
+## Dữ liệu local — **giữ** quiz / user dev (`prisma/dev.db`)
+
+Mục tiêu: làm task mới hoặc chạy `npm run verify` **không** làm mất dữ liệu người dùng đã tạo trên máy dev (trừ khi user yêu cầu reset có chủ đích).
+
+1. **Không** chạy `prisma migrate reset` (xoá toàn bộ DB + seed lại) trừ khi user **yêu cầu rõ** hoặc đang khôi phục môi trường hỏng; luôn gợi ý backup `prisma/dev.db` trước khi reset.
+2. **Migration:** tránh `DELETE` / `DROP` hàng loạt chỉ để “dọn prototype” trên nhánh dev — ưu tiên chỉ đổi schema + default / nullable; nếu bắt buộc xoá theo `type` hoặc bảng, **ghi rõ trong spec / plan** và trong PR (breaking local data). Không thêm bước script tự động xoá toàn bộ quiz ngoài phạm vi E2E.
+3. **E2E:** suite dùng **`DATABASE_URL=file:./e2e.db`** (tách `dev.db`). `global-setup` chỉ `deleteMany` quiz có `shareLink` trong `e2e/constants.ts` — **không** mở rộng xoá “tất cả quiz” hoặc toàn DB dev.
+4. Prisma CLI ngoài `package.json` (migrate, studio, …): cần `DATABASE_URL` khớp file đích (xem `.env.example`).
+
+## Task có `implementation-plan.md` (ví dụ `tasks/task-NNN-*/implementation-plan.md`)
+
+- Khi **đang code theo từng phase** trong file plan: **cập nhật realtime** bảng **§7 — Trạng thái làm theo phase** (cột *Trạng thái*, *Ngày / tham chiếu*, *e2e/verify*) và **ghi chú nhanh** nếu có blocker — để người xem PR / sau này theo dõi tiến độ không lệch thực tế.
 
 ## Feature mới — spec & tiến độ
 
