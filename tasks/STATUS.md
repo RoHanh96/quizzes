@@ -29,6 +29,7 @@ File này là **cái nhìn tổng quát** (đã làm / đang làm / còn nợ). 
 | [002](./task-002-crossword-basic-spec/)    | Crossword basic — spec & triển khai                  | **Hoàn thành** (MVP code) | Pipeline `normalizeCrosswordQuestions` + gán index; editor/preview/player + `answersMatch`; e2e Playwright tối thiểu + checklist §5.1 trong [spec.md](./task-002-crossword-basic-spec/spec.md); kiểm thử tay A4–A6 còn mở.                                                |
 | [003](./task-003-crossword-advanced-spec/) | Crossword advanced — ảnh + lưới + keyword            | **Hoàn thành**            | Spec: [spec.md](./task-003-crossword-advanced-spec/spec.md) — một ảnh, lưới **R×C = N** (ước số, gần vuông), số 1…N random, đúng câu mở đúng ô; đoán secret + modal như basic; min 500KB.                                                                                 |
 | [004](./task-004-multiple-choice-spec/)    | Multiple choice — bank + play length + bucket random | **Hoàn thành** (MVP code) | Spec [spec.md](./task-004-multiple-choice-spec/spec.md); code: `playLength` + `difficulty`/`order`, `multiple-choice-session`, form/API, `MultipleChoicePlayer`, E2E `task-004-mc-*.spec.ts`.                                                                             |
+| [005](./task-005-geography-quiz-spec/)     | Geography — generated MCQ, continent scope, public endless play | **Chưa bắt đầu** (chỉ spec/plan) | [spec.md](./task-005-geography-quiz-spec/spec.md), [implementation-plan.md](./task-005-geography-quiz-spec/implementation-plan.md); English prompts; data Wikidata/Commons + asset mirror; chưa có code/E2E. |
 
 
 ---
@@ -41,4 +42,4 @@ Các mục chưa gom vào folder riêng nhưng liên quan trực tiếp bảng t
 
 ---
 
-*Cập nhật lần cuối: 2026-04-17 — task 004 MVP + verify.*
+*Cập nhật lần cuối: 2026-04-18 — thêm task 005 geography (spec/plan, chưa code).*
